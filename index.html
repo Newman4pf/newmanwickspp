@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#070b16">
-<title>Newman Bot</title>
-<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Newman Bot">
+<title>Signal Wicks</title>
+<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Signal Wicks">
 
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -153,12 +153,15 @@ body{font-variant-numeric:tabular-nums}
 .pxg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}.pxg .stat b{font-size:15px}
 .pxrd div{margin:4px 0;line-height:1.5}
 </style>
+<style>
+details.dbk,#dtog,#dsec,#live,#token,#appid,#real,#acct,#mpaper,#mderiv,#mnote,.m-deriv{display:none!important}
+</style>
 </head>
 <body>
 <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
 <div class="app">
   <div class="row" style="margin-bottom:12px">
-    <div><b class="logo">NEWMAN BOT</b><br><small>ICT + Orderflow scanner</small></div>
+    <div><b class="logo">SIGNAL WICKS</b><br><small>CRT + MSNR + ICT + Orderflow scanner</small></div>
     <div style="text-align:right"><div><span id="dot" class="dot"></span><span id="mode" class="pill">OFFLINE</span></div><small id="utc" style="display:block;margin-top:5px">UTC --:--:--</small></div>
   </div>
 
@@ -190,7 +193,7 @@ body{font-variant-numeric:tabular-nums}
   <div class="glass">
     <div class="row"><b>Market &amp; stake</b><small id="mstat"></small></div>
     <label>Strategy</label>
-    <select id="strat"><option value="conf">Confluence: MSNR + OB + Breaker + BZR (main)</option><option value="msnr">MSNR + Order block</option><option value="fvg">Fair value gap</option><option value="sweep">Liquidity sweep</option><option value="bos">Break of structure</option></select>
+    <select id="strat"><option value="conf">Confluence · MSNR + OB</option><option value="msnr">MSNR + Order block</option><option value="fvg">Fair value gap</option><option value="sweep">Liquidity sweep</option><option value="bos">Break of structure</option></select>
     <small class="mut" id="sdesc"></small>
     <label>Market</label><div id="mkc" class="chips"></div><input id="msq" type="text" placeholder="search: BTC, EUR, gold, volatility">
     <div id="mtiles"></div>
@@ -215,7 +218,7 @@ body{font-variant-numeric:tabular-nums}
   </div>
 
   <div class="glass tilt"><div class="row"><b>Radar</b><span><button id="rscan" class="chip">Scan</button> <button id="rpick" class="chip on">Pick for me</button></span></div>
-    <div class="chk"><input id="scalp" type="checkbox"><span>Scalper: every minute, scan and auto-trade the best 1m setup (paper, or your linked broker if enabled)</span></div>
+    <div class="chk"><input id="scalp" type="checkbox"><span>Scalper: every minute, scan and auto-trade the best 1m setup (paper account)</span></div>
     <div class="chk"><input id="flip" type="checkbox"><span>Flip: reverse the paper trade after a stop-out or on an opposite signal (stops at max losses)</span></div>
     <div id="rlist"><small class="mut">Press START, then Scan to check the watchlist.</small></div><div id="rhelp" style="margin-top:8px"></div></div>
   <div class="glass tilt"><div class="row"><b>Market greed</b><span id="gr" class="pill">&mdash;</span></div><div class="bar" style="margin:8px 0"><i id="grb" style="width:50%"></i></div>
@@ -232,8 +235,8 @@ body{font-variant-numeric:tabular-nums}
     <small data-k="nwst" id="nwst" class="mut"></small>
     <input data-k="evq" id="evq" placeholder="Search upcoming events (gold, USD, CPI, Fed...)" style="width:100%;margin:6px 0">
     <div data-k="evl" id="evl" class="mut" style="font-size:12px;line-height:1.5"></div>
-    <div data-k="autoT" class="chk"><input id="autoT" type="checkbox"><span>Auto-trade signals (paper; real orders only if the broker link is ON)</span></div>
-    <div data-k="lott" class="row"><b>Lot size (MT5 style, paper)</b></div>
+    <div data-k="autoT" class="chk"><input id="autoT" type="checkbox"><span>Auto-trade signals (paper account)</span></div>
+    <div data-k="lott" class="row"><b>Lot size (paper)</b></div>
     <div data-k="lotmode" class="row" style="gap:8px;margin:6px 0"><select id="lotmode" style="flex:1.4"><option value="stake">Stake + multiplier</option><option value="lot">Fixed lot</option><option value="risk" selected>Risk % per trade (auto lot)</option></select><input id="lots" type="number" step="0.01" min="0.01" value="0.10" style="flex:.7"><input id="rkp" type="number" step="0.1" value="0.5" style="flex:.6" placeholder="risk %"></div>
     <div data-k="lotchips" id="lotchips" class="chips"></div>
     <div data-k="lev" class="row" style="gap:8px;margin:6px 0"><span class="mut">Leverage 1:</span><input id="lev" type="number" value="100" style="width:90px"></div>
@@ -1966,9 +1969,9 @@ function idx(cs,b,lv,a){const n=cs.length,c=cs[n-1],p=cs[n-2],f=buf(a);if(n<60)r
   const side=B?'BUY':'SELL';
   return Q(c,a,side,cap(side,c,(hi+lo)/2+(B?-f:f),a),22+Math.min(8,(B?c.c-hi:lo-c.c)/a*4)+(Math.abs(gap)>.3*a?4:0)+(dt?4:0)+(b?4:0),'first break of the 30-min opening range'+(Math.abs(gap)>.3*a?', gap agrees':'')+(dt?', daily trend agrees':''))}
 /* ---------- registry ---------- */
-const NAMES={fvg:'Fair Value Gap (FVG)',sweep:'Liquidity Sweep',mss:'Market Structure Shift',manip:'Manipulation',accum:'Accumulation',pd:'Premium & Discount',
-  stack:'Stacked Imbalance',absorb:'Absorption',dshift:'Delta Shift & Aggression',fail:'Failed Auction',balance:'Balance',value:'Value Area',ob:'Order block',
-  ict:'ICT concepts (all 6)',of:'Orderflow concepts (all 6)',gex:'Gamma regime',idm:'Intraday momentum',tsm:'Trend (time-series momentum)',fix:'London 4pm fix reversal',lob:'London open range break',usd:'Dollar regime',idx:'Index opening-range break',macro:'Macro desk (thorough)',conf:'Confluence: MSNR + OB + Breaker + BZR',msnr:'MSNR + Order block'};
+const NAMES={fvg:'Fair value gap',sweep:'Liquidity sweep',mss:'Market structure shift',manip:'Manipulation',accum:'Accumulation',pd:'Premium and discount',
+  stack:'Stacked imbalance',absorb:'Absorption',dshift:'Delta shift',fail:'Failed auction',balance:'Balance',value:'Value area',ob:'Order block',
+  ict:'ICT concepts (all six)',of:'Orderflow concepts (all six)',gex:'Gamma regime',idm:'Intraday momentum',tsm:'Trend (time-series momentum)',fix:'London 4pm fix reversal',lob:'London open range break',usd:'Dollar regime',idx:'Index opening-range break',macro:'Macro desk (strict)',conf:'Confluence \u00b7 MSNR + OB',msnr:'MSNR + order block'};
 const ICT=['fvg','sweep','mss','manip','accum','pd'],OF=['stack','absorb','dshift','fail','balance','value'];
 const MACRO=['gex','idm','tsm','fix','lob','usd','idx'];
 const FN={fvg,sweep,mss,manip,accum,pd,stack,absorb,dshift,fail,balance,value,gex,idm,tsm,fix,lob,usd,idx};
@@ -1992,31 +1995,42 @@ function evid(id,cs,sy,step){const N=cs.length,k=sy+'|'+step+'|'+id+'|'+cs[N-1].
     for(let j=i+1;j<Math.min(N,i+49);j++){const x=cs[j];if(B?x.l<=s.sl:x.h>=s.sl){res=-1;break}if(B?x.h>=tp:x.l<=tp){res=2;break}}
     if(res){n++;R+=res;i+=5}}
   const o={n,ex:n?R/n:0,sh:R/(n+6)};if(EV.size>400)EV.clear();EV.set(k,o);return o}
-function macroPlus(cs,b,lv,a){const n=cs.length;if(n<130)return null;const sy=window.SCS||cfg.symbol||'',now=Date.now()/1000,c=cs[n-1],step=T_(c)-T_(cs[n-2]),vr=vrat(cs,4),zv=(vr-1)/Math.sqrt(2*7*3/(12*Math.min(n-1,150))),K=12,vote={};
-  // 1) every macro rule gets a vote: its most recent signal in the last 12 candles (older = lighter), only if the market is in the regime that rule needs
-  MACRO.forEach(id=>{for(let j=0;j<K;j++){const p=j?cs.slice(0,n-j):cs;let s=null;try{s=FN[id](p,b,lv,j?aa(p):a)}catch(e){}
-    if(s&&s.side){const cont=CONT.includes(id)||(id==='gex'&&/breakout/.test(s.cf));if(!((cont&&zv<=-1)||(!cont&&zv>=1)))vote[id]={side:s.side,age:j,s};break}}});
+function macroPlus(cs,b,lv,a){const n=cs.length;if(n<130)return null;
+  const sy=window.SCS||cfg.symbol||'',now=Date.now()/1000,c=cs[n-1];
+  // candle size = median spacing of the last 20 candles (a weekend gap must not make a 15m chart look like 1h)
+  const gp=[];for(let i=n-20;i<n;i++)gp.push(T_(cs[i])-T_(cs[i-1]));gp.sort((x,y)=>x-y);const step=gp[10];
+  if(!(step>=3600))return null;                       // strict desk: 1h and higher only
+  const vr=vrat(cs,4),zv=(vr-1)/Math.sqrt(2*7*3/(12*Math.min(n-1,150))),ZT=1.25,K=12,vote={};
+  // 1) each rule votes with its latest signal in the last 12 candles, only if it fits the regime: trend rules need z >= 1.25, fade rules need z <= -1.25
+  MACRO.forEach(id=>{if(id==='usd')return;for(let j=0;j<K;j++){const p=j?cs.slice(0,n-j):cs;let s=null;try{s=FN[id](p,b,lv,j?aa(p):a)}catch(e){}
+    if(s&&s.side){const cont=CONT.includes(id)||(id==='gex'&&/breakout/.test(s.cf));if(cont?zv>=ZT:zv<=-ZT)vote[id]={side:s.side,age:j,s};break}}});
   if(!Object.keys(vote).length)return null;
-  // 2) context votes: daily, weekly, 1h bias, dollar basket, Nasdaq risk trend
+  // 2) context: daily trend, weekly trend, 4x bias (b), dollar basket, Nasdaq risk trend
   const dayT=trendOf(sy,86400,20),weekT=trendOf(sy,604800,10),z=USDM[sy]?usdZ(sy,step):null,rk=/^(OTC_|cry)/.test(sy)&&sy!=='OTC_NDX'?trendOf('OTC_NDX',86400,20):0,items=[];
   Object.keys(vote).forEach(id=>items.push([vote[id].side==='BUY'?1:-1,2*(1-vote[id].age/(2*K)),NAMES[id],id]));
-  items.push([dayT,2,'daily trend'],[weekT,1.5,'weekly trend'],[b,1,'1h bias']);if(z!==null&&Math.abs(z)>=1.2)items.push([(z>0?1:-1)*USDM[sy],1.5,'USD basket']);if(rk)items.push([rk,1,'Nasdaq risk trend']);
+  items.push([dayT,2,'daily trend'],[weekT,1.5,'weekly trend'],[b,1,'4x bias']);if(z!==null&&Math.abs(z)>=1.2)items.push([(z>0?1:-1)*USDM[sy],1.5,'USD basket']);if(rk)items.push([rk,1,'Nasdaq risk trend']);
   const sum=d=>items.reduce((t,x)=>t+(x[0]===d?x[1]:0),0),L=sum(1),S=sum(-1);if(L===S)return null;
   const d=L>S?1:-1,A=d>0?L:S,O=d>0?S:L,side=d>0?'BUY':'SELL',agree=items.filter(x=>x[0]===d),rules=agree.filter(x=>x[3]),against=items.filter(x=>x[0]===-d);
-  // 3) a rule must have fired within the last 3 candles on this side (the trigger), and the confluence must be strong and mostly one-sided
-  const trig=rules.filter(x=>vote[x[3]].age<=2).map(x=>vote[x[3]]).sort((p,q)=>q.s.q-p.s.q)[0];if(!trig)return null;
-  if(A<6||O>1||agree.length<4)return null;
+  // 3) confluence: score >= 6.5 for, <= 0.75 against, 4+ agreeing items; daily trend or 4x bias agrees; weekly must not oppose
+  if(A<6.5||O>.75||agree.length<4)return null;
   if(rules.length<2&&!(dayT===d&&weekT===d))return null;
-  if(dayT===-d||weekT===-d||(dayT!==d&&weekT!==d))return null;
-  // 4) hard gates: volatility, news, and the trigger rule's own walk-forward record
+  if(!(dayT===d||b===d)||weekT===-d)return null;
+  // fresh trigger: a rule fired in the last 3 candles on this side
+  const trig=rules.filter(x=>vote[x[3]].age<=2).map(x=>vote[x[3]]).sort((p,q)=>q.s.q-p.s.q)[0];if(!trig)return null;
+  // 4) hard gates: volatility, news, liquidity, walk-forward record (8+ trades, shrunk expectancy >= 0.08R)
   const vol=avgR(cs.slice(-14))/(avgR(cs.slice(-114))||1e-9),ev=(typeof NEWS!=='undefined'&&typeof newsCur==='function')?NEWS.filter(e=>(e.cur==='ALL'||newsCur(sy).includes(e.cur))&&e.t>now-2700&&e.t<now+172800):[];
   if(vol<.6||vol>2.2||ev.some(e=>e.t<now+10800)||!liq(now,sy))return null;
-  const id=rules.find(x=>vote[x[3]]===trig)[3];let evd=null;if(id!=='usd'){evd=evid(id,cs,sy,step);if(evd.n>=4&&evd.sh<-.12)return null}
-  const sl=trig.s.sl;if(side==='BUY'?!(sl<c.c):!(sl>c.c))return null;if(Math.abs(c.c-trig.s.entry)>.8*a)return null;
-  const nx=ev[0],good=evd&&evd.n>=8&&evd.sh>.15,q=Math.max(12,Math.min(40,14+Math.min(24,A*2.2)-O*3-(nx?2:0)+(good?3:0)-(!evd||evd.n<8?3:0)));if(q<24)return null;
-  return Q(c,a,side,cap(side,c,sl,a),q,'Combined macro '+A.toFixed(1)+' vs '+O.toFixed(1)+': '+agree.map(x=>x[2]+(x[3]&&vote[x[3]].age?' ('+vote[x[3]].age+' candles ago)':'')).join(' + ')+(against.length?' | against: '+against.map(x=>x[2]).join(', '):'')
-    +' | VR '+vr.toFixed(2)+(zv>=1?' trending':zv<=-1?' mean-reverting':' random')+' (z '+zv.toFixed(1)+')'+(evd?(evd.n>=8?' | replay '+evd.n+' trades '+(evd.ex>=0?'+':'')+evd.ex.toFixed(2)+'R, shrunk '+evd.sh.toFixed(2)+'R':' | replay history thin ('+evd.n+' trades)'):'')
-    +' | volatility normal | liquid hours | no news for 3h before or 45m after'+(nx?' | next: '+nx.title+' in '+Math.round((nx.t-now)/3600)+'h':'')+' | size x'+Math.max(.5,Math.min(1.5,1/vol)).toFixed(1))}
+  const id=rules.find(x=>vote[x[3]]===trig)[3],evd=evid(id,cs,sy,step);if(!(evd.n>=8&&evd.sh>=.08))return null;
+  // 5) entry must still be close to the trigger (0.55 ATR) and the stop 0.35-2.2 ATR away
+  const sl=cap(side,c,trig.s.sl,a),risk=Math.abs(c.c-sl);if(side==='BUY'?!(sl<c.c):!(sl>c.c))return null;
+  if(Math.abs(c.c-trig.s.entry)>.55*a||risk<.35*a||risk>2.2*a)return null;
+  // 6) the app scores a signal 40 + q (+15 when the 4x bias agrees); the desk only prints at 82 or more
+  const nx=ev[0],q=Math.max(12,Math.min(40,14+Math.min(24,A*2.2)-O*3-(nx?2:0)+(evd.sh>.15?3:0)));
+  if(40+q+(b===d?15:0)<82)return null;
+  const sz=vol>1.25?Math.max(.25,1.25/vol):1;          // size is cut when volatility is hot, never levered up
+  return Q(c,a,side,sl,q,'Strict macro '+A.toFixed(1)+' vs '+O.toFixed(2)+': '+agree.map(x=>x[2]+(x[3]&&vote[x[3]].age?' ('+vote[x[3]].age+' candles ago)':'')).join(' + ')+(against.length?' | against: '+against.map(x=>x[2]).join(', '):'')
+    +' | VR '+vr.toFixed(2)+(zv>=ZT?' trending':' mean-reverting')+' (z '+zv.toFixed(1)+') | replay '+evd.n+' trades '+(evd.ex>=0?'+':'')+evd.ex.toFixed(2)+'R, shrunk '+evd.sh.toFixed(2)+'R'
+    +' | stop '+(risk/a).toFixed(2)+' ATR | volatility normal | liquid hours | no news for 3h before or 45m after'+(nx?' | next: '+nx.title+' in '+Math.round((nx.t-now)/3600)+'h':'')+' | size x'+sz.toFixed(1))}
 const DESC={
  ict:'Any of the six ICT concepts fires. More than one agreeing on the same side adds points; opposite signals cancel.',
  fvg:'Price returns into an open fair value gap and closes back past its midpoint.',
@@ -2043,8 +2057,51 @@ const DESC={
  usd:'A leave-one-out dollar basket (EUR, GBP, JPY, CAD, CHF pairs with DXY-style weights) has trended hard. Gold, EUR and GBP trade against it, USDJPY/CAD/CHF with it, once the pair\'s own candle confirms. Needs Scan all to have run.',
  gex:'Volatility expanding: follow the breakout. Volatility compressed: fade a 2-ATR stretch back to the mean. Stands in for gamma exposure (no options data in this feed).',
  idm:'The first half hour after the 13:30 UTC open sets the side for 16:30 UTC, the last half hour of the 13:00-17:00 UTC window. 15m charts and faster.'};
+Object.assign(DESC,{
+ macro:'Strict desk. Clears only on 1h and higher. A rule must fit the variance-ratio regime (z \u2265 1.25 to trend, z \u2264 \u22121.25 to fade), agree with the daily trend or the 4\u00d7 bias, keep weekly from opposing, stay inside 0.55 ATR of the trigger, use a 0.35\u20132.2 ATR stop, show 8+ walk-forward trades with shrunk expectancy \u2265 0.08R, score at least 6.5 for and at most 0.75 against, and print 82+ (only reachable when the 4\u00d7 bias agrees). Size is cut when volatility is hot, and never levered up. Run Scan all first.',
+ conf:'Higher-timeframe bias must exist and agree. An order block (or breaker) is retested on a fresh MSNR level. Metals only 13:00\u201317:00 UTC.',
+ msnr:'Same order-block retest, but the level must be a fresh close-price peak or trough.',
+ ob:'The last opposite candle before displacement is retested and holds.',
+ ict:'Any of the six can fire. Two on the same side add weight. A tie cancels.',
+ fvg:'Return into an open three-candle gap and close back through its midpoint.',
+ sweep:'Wick through a recent swing, close back inside.',
+ mss:'Displacement close through the last lower-high or higher-low.',
+ manip:'A quiet range breaks one way and the break fails.',
+ accum:'A volatility squeeze, then a strong close out of it.',
+ pd:'Rejection in the cheap half to buy, or the expensive half to sell.',
+ of:'The feed has no real volume. Delta is estimated from where the candle closed inside its range.',
+ stack:'Three candles closing on their highs or lows with delta all one way.',
+ absorb:'Wide range, small body, long wick at a swing, then a confirming candle.',
+ dshift:'One-sided delta flips and price breaks the prior candle.',
+ fail:'Two candles probe outside a range and the next close comes back in.',
+ balance:'Fade a rejection at the edge of a rotation, back toward the middle.',
+ value:'Price closes back inside the 70% value area. Target is the point of control.'});
+const BOOK=[['ALLADINN macro',['macro']],['Structure',['conf','msnr','ob']],['ICT',['ict'].concat(ICT)],['Orderflow (estimated)',['of'].concat(OF)]];
 const GROUPS=[{label:'MSNR Strategy',ids:['conf','msnr']},{label:'ICT concepts',ids:['ict'].concat(ICT)},{label:'Orderflow concepts',ids:['of'].concat(OF)},{label:'Order block',ids:['ob']},{label:'Macro (researched)',ids:['macro'].concat(MACRO)},{label:'Indices',ids:['idx']}];
-return{FN,NAMES,DESC,GROUPS,ICT,OF,MACRO,group,swings,macroPlus}
+
+/* ---------- Candle Range Theory (CRT) ----------
+   Candle 1 = range candle. Candle 2 sweeps one side of it (manipulation) and closes back inside (reversal).
+   Candle 3 expands toward the far side of candle 1 (target). Signal fires on the close of candle 2. */
+function crt(cs,b,lv,a){const n=cs.length;if(n<30)return null;const c=cs[n-1],p=cs[n-2],f=buf(a),R=p.h-p.l,mid=(p.h+p.l)/2,cr=rng(c);
+  if(R<.8*a||R>3.2*a||body(p)<.3*R)return null;               // range candle must be real, not a doji or an exhausted spike
+  const lw=Math.min(c.o,c.c)-c.l,uw=c.h-Math.max(c.o,c.c);
+  if(c.l<p.l&&c.c>p.l&&c.h<p.h&&c.l>p.l-1.2*a&&bull(c)&&lw>=.35*cr&&c.c>=p.l+.1*R)
+    return Q(c,a,'BUY',cap('BUY',c,c.l-f,a),16+Math.min(10,lw/cr*14)+(c.c>mid?8:0)+Math.min(6,(p.l-c.l)/a*10),'CRT');
+  if(c.h>p.h&&c.c<p.h&&c.l>p.l&&c.h<p.h+1.2*a&&!bull(c)&&uw>=.35*cr&&c.c<=p.h-.1*R)
+    return Q(c,a,'SELL',cap('SELL',c,c.h+f,a),16+Math.min(10,uw/cr*14)+(c.c<mid?8:0)+Math.min(6,(c.h-p.h)/a*10),'CRT');
+  return null}
+FN.crt=crt;NAMES.crt='Candle Range Theory (CRT)';
+DESC.crt='Range candle swept on one side, then the next candle closes back inside with a rejection wick. Targets the 50% and the far side of the range. Needs higher-timeframe bias.';
+GROUPS.unshift({label:'Candle Range Theory',ids:['crt']});BOOK.unshift(['Candle Range Theory',['crt']]);
+/* ---------- accuracy gate on every single strategy (market-participant order: bias, flow, price action, then lagging EMAs) ---------- */
+const gate=fn=>(cs,b,lv,a)=>{const s=fn(cs,b,lv,a);if(!s||!s.side)return s;const n=cs.length,c=cs[n-1];
+  if(n>=60){let t=0;for(let i=n-50;i<n;i++)t+=cs[i].h-cs[i].l;if(a<.6*t/50)return null}   // dead market: no edge
+  if(rng(c)>3.2*a)return null;                                                              // never chase an exhausted candle
+  const ema=k=>{let e=cs[0].c;const m=2/(k+1);for(let i=1;i<n;i++)e=cs[i].c*m+e*(1-m);return e},e50=ema(50),e200=n>=200?ema(200):e50,up=s.side==='BUY';
+  const al=(up?c.c>e50&&e50>=e200:c.c<e50&&e50<=e200);
+  s.q=Math.max(12,Math.min(40,(s.q||20)+(al?4:-6)));return s};
+Object.keys(FN).forEach(k=>{if(k!=='crt'||true)FN[k]=gate(FN[k])});
+return{FN,NAMES,DESC,GROUPS,BOOK,ICT,OF,MACRO,group,swings,macroPlus}
 })();
 
 /* ===== Wire the new strategy set into the app ===== */
@@ -2174,14 +2231,53 @@ function heal(why){const n=Date.now();if(n-healAt<120000)return;healAt=n;
   try{console.warn('self-repair:',why);readCfg();analyzeAll();render()}catch(e){}
   try{if(running&&ws&&ws.readyState>1){$('halt').click();setTimeout(()=>$('go').click(),900)}}catch(e){}}
 function note(){const n=Date.now();E.push(n);while(E.length&&n-E[0]>60000)E.shift();if(E.length>=5){E.length=0;heal('error burst')}}
-window.addEventListener('error',note);
-window.addEventListener('unhandledrejection',e=>{e.preventDefault();note()});
+window.addEventListener('error',e=>{try{log('error: '+(e.message||'script error'))}catch(_){}note()});
+window.addEventListener('unhandledrejection',e=>{e.preventDefault();try{log('background error: '+((e.reason&&e.reason.message)||e.reason||'unknown'))}catch(_){}note()});
 setInterval(()=>{try{if(running&&!document.hidden&&ws&&ws.readyState>1)heal('feed closed')}catch(e){}},20000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(()=>{try{if(running&&ws&&ws.readyState>1)heal('back from background')}catch(e){}},1200)});
 
 /* 3. Background alerts: service worker shows notifications and receives pushes */
 try{if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}
 })();
+</script>
+<style>
+/* layout fixes + strategy book */
+#nav{grid-template-columns:repeat(6,1fr)!important}#nav button{font-size:10.5px}
+#cv{height:clamp(220px,calc(100vh - 560px),46vh)!important}
+.bk{padding:16px!important;border-radius:26px!important}.bk b{text-shadow:none!important}
+.bkt{margin:0 0 6px;font-size:24px;text-shadow:none}.bks{margin:0 0 12px;font-size:14px;line-height:1.5}
+.bkg{margin:10px 0;border:1px solid #2a2a2a;border-radius:22px;padding:4px 10px 12px;background:#161616}
+.bkg>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;padding:12px 4px;font-size:18px;font-weight:700;cursor:pointer}
+.bkg>summary::-webkit-details-marker{display:none}.bkg>summary::after{content:"\25B2";font-size:11px;color:#f5b301}.bkg:not([open])>summary::after{content:"\25BC"}
+.bki{display:block;width:100%;text-align:left;margin:8px 0 0;padding:14px 16px;border-radius:18px;border:1px solid transparent;background:#101010;color:#eee;font:inherit}
+.bki b{display:block;font-size:17px;margin-bottom:6px}.bki span{display:block;font-size:14px;line-height:1.45;color:#8d8d8d}.bki.on{border-color:#f5b301}
+.bki:active{transform:scale(.99)}
+</style>
+<script>
+/* ===== Strategy book tab ===== */
+(function(){
+const $=id=>document.getElementById(id),A=document.querySelector('.app'),X=window.NBX,sel=$('strat'),nav=$('nav');
+if(!A||!X||!sel||!nav||!window.showTab)return;
+const card=document.createElement('div');card.className='glass bk';card.dataset.tab='book';A.appendChild(card);
+const G=X.BOOK.map(g=>[g[0],g[1],1]).concat([['Macro rules the desk reads',X.MACRO,0]]);
+function paint(){const cur=sel.value;
+  card.innerHTML='<h2 class="bkt">Strategy book</h2><p class="mut bks">Structure, ICT, and estimated orderflow from the Signal Wicks desk. Macro is the only book that must clear the strict gates. Tap a strategy to use it.</p>'+
+  G.map(([t,ids,o])=>'<details class="bkg"'+(o||ids.includes(cur)?' open':'')+'><summary>'+t+'</summary>'+ids.map(id=>'<button class="bki'+(id===cur?' on':'')+'" data-k="'+id+'"><b>'+X.NAMES[id]+'</b><span>'+X.DESC[id]+'</span></button>').join('')+'</details>').join('')}
+card.addEventListener('click',e=>{const b=e.target.closest('.bki');if(!b)return;const op=[...card.querySelectorAll('details')].map(d=>d.open);
+  sel.value=b.dataset.k;sel.dispatchEvent(new Event('change',{bubbles:true}));if($('pkSn'))$('pkSn').textContent=X.NAMES[sel.value];try{readCfg();analyzeAll();render()}catch(x){}
+  paint();card.querySelectorAll('details').forEach((d,i)=>{d.open=op[i]})});
+sel.addEventListener('change',paint);paint();
+const btn=document.createElement('button');btn.dataset.t='book';
+btn.innerHTML='<b><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5"/></svg></b>Book';
+btn.onclick=()=>showTab('book');nav.insertBefore(btn,nav.lastElementChild);
+})();
+</script>
+<script>
+/* broker navigation removed: paper trading and signals only */
+(function(){function clean(){try{document.body.dataset.mode='paper';const l=document.getElementById('live');if(l)l.checked=false;const t=document.getElementById('token');if(t)t.value='';
+const m=document.getElementById('mpaper');if(m){const g=m.closest('.glass')||m.parentElement.parentElement;if(g)g.style.display='none'}
+document.querySelectorAll('.sec,summary,b').forEach(e=>{if(/^\s*(Trading mode|Broker)/i.test(e.textContent)&&e.children.length===0){e.style.display='none'}})}catch(x){}}
+clean();setTimeout(clean,300);setTimeout(clean,1500);document.addEventListener('click',()=>setTimeout(clean,50))})();
 </script>
 </body>
 </html>
