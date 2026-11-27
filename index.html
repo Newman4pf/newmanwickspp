@@ -227,13 +227,13 @@ details.dbk,#dtog,#dsec,#live,#token,#appid,#real,#acct,#mpaper,#mderiv,#mnote,.
     <small class="mut">Tick volume (time spent at each price). For real traded volume, see Live volume on Home.</small></div>
   <details class="glass tilt" open>
     <summary>Trader tools</summary>
-    <div data-k="tps" class="chk"><input id="tps" type="checkbox" checked><span>Short targets: TP1 0.4R, TP2 0.8R, TP3 1.2R, placed just before levels. The trade closes at TP2; the stop moves to break-even after TP1</span></div>
-    <div data-k="tver" class="chk"><input id="tver" type="checkbox" checked><span>AI strategy tester: replay each signal's TPs on recent candles first, resize them, and only trade signals that would have made money</span></div>
+    <div data-k="tps" class="chk"><span>Strict targets only: TP1 = 2R, TP2 = 3R, TP3 = 4.5R. Nothing shorter than 2R. The stop moves to break-even after TP1 and the trade closes at TP2.</span></div>
+    <div data-k="room" class="chk"><input id="room" type="checkbox" checked><span>Skip a setup when an opposing MSNR level or zone blocks the path before 2R</span></div>
     <div data-k="nws" class="chk"><input id="nws" type="checkbox" checked><span>News filter: skip new trades near high-impact news for the market's currency, and close paper trades that are in profit just before it</span></div>
     <div data-k="nwb" class="row" style="gap:8px;margin:6px 0"><span class="mut">Minutes before / after</span><input id="nwb" type="number" min="1" max="120" value="15" style="width:70px"><input id="nwa" type="number" min="1" max="120" value="15" style="width:70px"></div>
     <textarea data-k="nwm" id="nwm" rows="2" placeholder="Extra events (UTC), one per line: 2026-12-04 13:30 USD NFP" style="width:100%;margin:4px 0;background:#111;color:#eee;border:1px solid #242424;border-radius:10px;padding:8px;font:inherit"></textarea>
     <small data-k="nwst" id="nwst" class="mut"></small>
-    <input data-k="evq" id="evq" placeholder="Search upcoming events (gold, USD, CPI, Fed...)" style="width:100%;margin:6px 0">
+    <input data-k="evq" id="evq" type="text" placeholder="Search upcoming events (gold, USD, CPI, Fed...)" style="width:100%;margin:6px 0">
     <div data-k="evl" id="evl" class="mut" style="font-size:12px;line-height:1.5"></div>
     <div data-k="autoT" class="chk"><input id="autoT" type="checkbox"><span>Auto-trade signals (paper account)</span></div>
     <div data-k="lott" class="row"><b>Lot size (paper)</b></div>
@@ -277,15 +277,15 @@ details.dbk,#dtog,#dsec,#live,#token,#appid,#real,#acct,#mpaper,#mderiv,#mnote,.
     <p class="mut" style="margin:10px 0 0">Manual values (used only when Auto settings is off)</p>
     <div class="grid">
       <div><label>Multiplier</label><input id="mult" type="number" value="20"></div>
-      <div><label>Reward : Risk</label><input id="rr" type="number" value="2" step="0.5"></div>
-      <div><label>Min setup score</label><input id="minScore" type="number" value="60"></div>
+      <div><label>Reward : Risk</label><input id="rr" type="number" value="2" step="0.5" min="2"></div>
+      <div><label>Min setup score</label><input id="minScore" type="number" value="80" min="70"></div>
       <div><label>Max losses per day</label><input id="maxl" type="number" value="2"></div>
       <div><label>Trade from (UTC hour)</label><input id="s0" type="number" value="0"></div>
       <div><label>Trade to (UTC hour)</label><input id="s1" type="number" value="24"></div>
     </div>
     <div class="chk"><input id="msnr" type="checkbox" checked><span>Require a fresh MSNR level at the order block</span></div>
     <div class="chk"><input id="paper" type="checkbox" checked><span>Paper trade automatically with virtual money (no token needed)</span></div>
-    <div class="chk"><input id="smart" type="checkbox"><span>Use the suggested TP2 as my target (instead of a fixed 1:2)</span></div>
+    <div class="chk"><input id="smart" type="checkbox" checked><span>Close at the suggested TP2 (3R) instead of a fixed reward:risk (never below 1:2)</span></div>
   </details>
 
   <details class="glass"><summary>Log</summary><pre id="log">Ready.</pre></details>
@@ -301,7 +301,7 @@ const EP_OLD=['wss://ws.derivws.com/websockets/v3?app_id=1089','wss://ws.binaryw
 const isNew=u=>u.includes('/trading/v1/');
 const tokOn=()=>!!(cfg.live&&cfg.token);
 const eps=()=>tokOn()?EP_OLD:[EP_NEW].concat(EP_OLD);
-let ws,running=false,wl,cfg={disp:1.2,slbuf:.15,msnr:true},series={},res={},subs=new Set(),
+let ws,running=false,wl,cfg={disp:1.2,slbuf:.25,msnr:true},series={},res={},subs=new Set(),
     active=new Set([60,300,900,3600]),viewG=300,ei=0,opened=false,auth=false,raf=0,
     st={open:false,losses:0,day:null},symList={},mults=null,pp={bal:1e6,start:1e6,eq:[1e6],trades:[],open:null,losses:0,day:null};
 
@@ -315,8 +315,8 @@ const FALL=[['Cryptocurrencies','cryptocurrency',[['cryBTCUSD','BTC/USD'],['cryE
 try{const v=JSON.parse(localStorage.getItem("nb_pp")||"null");if(v&&v.bal>0){pp=v;pp.open=null;if(pp.start===1000&&!pp.m1){const k=999000;pp.bal+=k;pp.start+=k;pp.eq=(pp.eq||[]).map(x=>x+k);pp.m1=1}}}catch(e){}
 FALL.forEach(([grp,mk,arr])=>arr.forEach(([k,n])=>{symList[k]={name:n,market:mk,grp,open:1}}));
 // per-market defaults: timeframes to scan, trading hours (UTC), min score
-const PRE={crypto:{tf:[300,900,3600],h:[0,24],sc:60},forex:{tf:[900,3600,14400],h:[7,21],sc:65},commodities:{tf:[900,3600],h:[7,21],sc:65},
-  indices:{tf:[300,900,3600],h:[8,21],sc:65},stocks:{tf:[900,3600],h:[13,21],sc:65},synthetic:{tf:[60,300,900],h:[0,24],sc:60}};
+const PRE={crypto:{tf:[300,900,3600],h:[0,24],sc:80},forex:{tf:[900,3600,14400],h:[7,21],sc:80},commodities:{tf:[900,3600],h:[7,21],sc:80},
+  indices:{tf:[300,900,3600],h:[8,21],sc:80},stocks:{tf:[900,3600],h:[13,21],sc:80},synthetic:{tf:[60,300,900],h:[0,24],sc:80}};
 const pad=v=>String(v).padStart(2,'0');
 const curSym=()=>$('symbol').value.trim()||$('symsel').value||'cryBTCUSD';
 function clsOf(sym){const x=(symList[sym]&&symList[sym].market)||'';
@@ -334,7 +334,7 @@ function plan(){const k=clsOf(curSym()),P=PRE[k],stake=Math.max(0,+$('stake').va
 function readCfg(){const pl=plan(),a=$('auto').checked,h=hoursNow();
   cfg={strat:$('strat').value,token:$('live').checked?$('token').value.trim():'',symbol:curSym(),stake:pl.stake,auto:a,f:pl.f,mult:+$('mult').value,
     rr:a?pl.rr:+$('rr').value,maxl:a?pl.maxl:+$('maxl').value,minScore:a?pl.minScore:+$('minScore').value,
-    h0:h[0],h1:h[1],live:$('live').checked,real:$('real').checked,msnr:$('msnr').checked,paper:$('paper').checked,smart:$('smart').checked,disp:1.2,slbuf:.15}}
+    h0:h[0],h1:h[1],live:$('live').checked,real:$('real').checked,msnr:true,paper:$('paper').checked,smart:$('smart').checked,disp:1.2,slbuf:.25}}
 function buildSel(){const g={},cur=$('symsel').value||'cryBTCUSD';
   Object.entries(symList).filter(([k,v])=>k===cur||((mkf==='all'||(mkf==='open'?v.open:clsOf(k)===mkf))&&(!mq||(k+' '+v.name).toLowerCase().includes(mq)))).forEach(([k,v])=>{(g[v.grp]=g[v.grp]||[]).push(`<option value="${k}">${v.name}${v.open?'':' (closed)'}</option>`)});
   $('symsel').innerHTML=Object.keys(g).map(n=>`<optgroup label="${n}">${g[n].join('')}</optgroup>`).join('');
@@ -374,36 +374,44 @@ function signal(cs,b,lv){const Z=zones(cs.slice(0,-1)),c=cs[cs.length-1],p=cs[cs
     if(ok.length){const t=ok.reduce((m,x)=>x.l<m.l?x:m);return{side:'BUY',sl:t.l-a*cfg.slbuf,entry:c.c,lvl:t.lvl}}
     if(z.length)return{skip:'BUY'}}
   return null}
-// Quick targets: distance price usually covers in N minutes (N = TP2 time, TP1 = N/3, TP3 = 5N/3).
-// 1-minute ATR is estimated from the signal timeframe's ATR; targets never go farther than the old 0.5R / 1R / 1.5R.
+// Strict take-profits: nothing closer than 2R. TP1 = 2R, TP2 = 3R, TP3 = 4.5R.
+// A real opposing MSNR level / zone near a target is named in the plan, but it never shortens the target.
 function fR(r){return +r.toFixed(2)}
-// Tester: replays this trade (same side and stop, these TPs, TP2 closes, stop to break-even after TP1) from each of the last ~200 candles and flags signals that would not have earned
-function tpTest(o,entry,risk,dir,cs,g){if(!cs||cs.length<90||!(risk>0))return o;
-  const H=16,K=cs.length-H-1,S=Math.max(0,K-200),d=o.map(t=>Math.abs(t.px-entry));let N=0,R=0;
-  for(let k=S;k<K;k++){const e=cs[k].c;let h=0,res=null;
-    for(let j=k+1;j<=k+H&&res===null;j++){const x=cs[j],up=dir>0?x.h-e:e-x.l,dn=dir>0?e-x.l:x.h-e;
-      if(dn>=(h?0:risk))res=h?0:-1;else while(h<o.length&&up>=d[h]){h++;if(h===2){res=d[1]/risk;break}}}
-    if(res===null)res=dir*(cs[k+H].c-e)/risk;N++;R+=res}
-  if(N<40)return o;const ex=R/N;o[0].why+=' \u00B7 tester '+(ex>0?'OK':'NOT OK')+' '+(ex>=0?'+':'')+ex.toFixed(2)+'R/trade ('+N+' runs)';o.test={ok:ex>0,ex,N};return o}
-// Take-profit suggestions: nearest opposing MSNR levels / order blocks at least 1R away, else 1R-2R-3R
-function targets(side,entry,sl,Z,lv,a,g,cs){const risk=Math.abs(entry-sl),dir=side==='BUY'?1:-1,c=[];
-  const sh=$('tps')&&$('tps').checked,add=(px,why)=>{const r=dir*(px-entry)/risk;if(r>=(sh?.15:1))c.push({px,r,why})};
-  if(dir>0){lv.A.forEach(v=>add(v,'MSNR A-level'));Z.bear.forEach(z=>add(z.l,'supply zone'));Z.bk.forEach(z=>add(z.l,'breaker'))}
-  else{lv.V.forEach(v=>add(v,'MSNR V-level'));Z.bull.forEach(z=>add(z.h,'demand zone'))}
-  c.sort((a,b)=>a.r-b.r);
-  if(sh){const o=[];[.4,.8,1.2].forEach(k=>{const p=o.length?o[o.length-1].r+.15:.15,L=c.filter(t=>t.r<k&&t.r>=p).pop(),r=L?L.r-.05:k;o.push({px:entry+dir*risk*r,r,why:L?L.why+' (just before)':k+'R target'})});return tpTest(o,entry,risk,dir,cs,g)}
-  const out=c.slice(0,3);
-  [1,2,3].forEach(k=>{if(out.length<3&&!out.some(t=>Math.abs(t.r-k)<.4))out.push({px:entry+dir*risk*k,r:k,why:k+'R target'})});
-  return out.sort((a,b)=>a.r-b.r).slice(0,3)}
+const TPL=[2,3,4.5];
+function opposing(side,Z,lv){const o=[];
+  if(side==='BUY'){lv.A.forEach(v=>o.push([v,'MSNR A-level']));Z.bear.forEach(z=>o.push([z.l,'supply zone']));Z.bk.forEach(z=>o.push([z.l,'breaker']))}
+  else{lv.V.forEach(v=>o.push([v,'MSNR V-level']));Z.bull.forEach(z=>o.push([z.h,'demand zone']))}
+  return o}
+function targets(side,entry,sl,Z,lv,a,g,cs){const risk=Math.abs(entry-sl),dir=side==='BUY'?1:-1,
+    op=opposing(side,Z,lv).map(([px,why])=>({r:dir*(px-entry)/risk,why}));
+  return TPL.map(k=>{const n=op.find(t=>Math.abs(t.r-k)<=.3);return{px:entry+dir*risk*k,r:k,why:n?k+'R target, near '+n.why:k+'R target'}})}
 // Setup score (0-100): bias 30 + zone tap/shift 25 + MSNR overlap 30 + candle strength 15
+// Strict gates for EVERY strategy: stop at least 1.5 ATR (and at most 4), higher-timeframe trend must agree (neutral only for top-quality setups),
+// and (switchable) no opposing MSNR level / zone between entry and 2R.
 function analyze(g){const s=series[g],h=series[hT(g)];
   if(!s||!h||s.length<60||h.length<40)return;
   const cs=s.slice(0,-1),hc=h.slice(0,-1),b=bias(hc),lv=msnr(hc),a=atr(cs),Z=zones(cs),price=s[s.length-1].c,c=cs[cs.length-1];
-  const sk=cfg.strat||'msnr',sig=ST[sk]?ST[sk](cs,b,lv,a):signal(cs,b,lv);let sc=b?30:0,status='WAIT',watch=null;
-  if(sig&&!sig.skip&&sig.side){const m=1.2*a,r0=Math.abs(sig.entry-sig.sl);if(r0<m)sig.sl=sig.entry-(sig.side==='BUY'?1:-1)*m;if((b===1&&sig.side==='SELL')||(b===-1&&sig.side==='BUY'))sig.skip='against the higher-timeframe trend'}
+  const sk=cfg.strat||'msnrc';let sig=null,sc=b?30:0,status='WAIT',watch=null;
+  try{sig=ST[sk]?ST[sk](cs,b,lv,a):signal(cs,b,lv)}catch(e){sig=null;if(!analyze.warned){analyze.warned=1;log('strategy error ('+sk+'): '+((e&&e.message)||e))}}
+  if(sig&&!sig.skip&&sig.side){const dir=sig.side==='BUY'?1:-1,r0=Math.abs(sig.entry-sig.sl);
+    if(!isFinite(r0)||!(r0>0)||!(a>0))sig.skip='invalid stop';
+    else{
+      if(r0<1.5*a)sig.sl=sig.entry-dir*1.5*a;
+      if(Math.abs(sig.entry-sig.sl)>4*a)sig.skip='stop too wide';
+      else if(b===-dir)sig.skip='against the higher-timeframe trend';
+      else if(b===0&&!(sig.q>=30))sig.skip='no higher-timeframe trend';
+      else if(!$('room')||$('room').checked){const risk=Math.abs(sig.entry-sig.sl),blk=opposing(sig.side,Z,lv).find(([px])=>{const r=dir*(px-sig.entry)/risk;return r>.25&&r<1.9});
+        if(blk)sig.skip='no room: '+blk[1]+' blocks the path before 2R'}}}
+  const sy0=window.SCS||cfg.symbol;
+  if(sig&&!sig.skip&&sig.side&&window.NBX&&NBX.brain){
+    try{const br=NBX.brain(sig,{cs,b,lv,a,Z,sk,sy:sy0}),min=+cfg.minScore||80;
+      if(br.veto)sig.skip='brain veto: '+br.veto;else if(br.score<min)sig.skip='brain score '+br.score+' is below the minimum '+min;else sig.brain=br;
+      if(sig.skip)sig.brainScore=br.score}
+    catch(e){if(!analyze.bw){analyze.bw=1;log('brain error: '+((e&&e.message)||e))}}}
+  if(sig&&sig.skip&&sig.side&&window.NBX&&NBX.rejLog)NBX.rejLog(sig,{sy:sy0,tf:g,sk,t:c.t,why:String(sig.skip),sc:sig.brainScore});
   if(sig&&!sig.skip){status='SIGNAL';
-    sc=sig.q!==undefined?Math.min(95,40+sig.q+((b===1&&sig.side==='BUY')||(b===-1&&sig.side==='SELL')?15:0)):(sig.side==='BUY'&&b===-1?10:30)+25+(sig.lvl!==undefined?30:0)+Math.min(15,15*Math.abs(c.c-c.o)/(1.5*a))}
-  else if(!sig&&b&&(sk==='msnr'||sk==='conf')){const arr=b<0?[...Z.bear,...Z.bk]:Z.bull,Ls=b<0?lv.A:lv.V,tol=a*.25;let best=null;
+    sc=sig.brain?sig.brain.score:sig.q!==undefined?Math.min(95,40+sig.q+((b===1&&sig.side==='BUY')||(b===-1&&sig.side==='SELL')?15:0)):(sig.side==='BUY'&&b===-1?10:30)+25+(sig.lvl!==undefined?30:0)+Math.min(15,15*Math.abs(c.c-c.o)/(1.5*a))}
+  else if(!sig&&b&&(sk==='msnr'||sk==='conf'||sk==='msnrc')){const arr=b<0?[...Z.bear,...Z.bk]:Z.bull,Ls=b<0?lv.A:lv.V,tol=a*.25;let best=null;
     for(const z of arr){const d=b<0?z.l-price:price-z.h;
       if(d>=-(z.h-z.l)&&d<=1.5*a){const lvl=Ls.find(x=>x>=z.l-tol&&x<=z.h+tol);
         if(cfg.msnr&&lvl===undefined)continue;if(!best||d<best.d)best={d,lvl,z}}}
@@ -411,7 +419,7 @@ function analyze(g){const s=series[g],h=series[hT(g)];
   if(sig&&!sig.skip)sig.tps=targets(sig.side,sig.entry,sig.sl,Z,lv,a,g,cs);
   res[g]={b,lv,Z,sig,status,watch,score:Math.round(sc)}}
 //#END
-let analyzeAll=()=>{active.forEach(analyze);if(go&&cfg.symbol===go.sym&&res[60]){go=null;maybeTrade(60)}alertCheck()};
+let analyzeAll=()=>{active.forEach(g=>{try{analyze(g)}catch(e){log('analyze error '+(L[g]||g)+': '+((e&&e.message)||e))}});if(go&&cfg.symbol===go.sym&&res[60]){go=null;maybeTrade(60)}alertCheck()};
 
 const money=v=>(v<0?'-':'')+'$'+Math.abs(v).toFixed(2);
 function ppSave(){try{localStorage.setItem('nb_pp',JSON.stringify(Object.assign({},pp,{open:null})))}catch(e){}}
@@ -466,7 +474,7 @@ function paintTP(){const r=res[viewG],o=$('tp');if(!r){o.innerHTML='';return}
       `<div class="rw2"><span>Entry</span><b>${fmt(s.entry)}</b></div>`+
       `<div class="rw2"><span>Stop loss</span><b class="neg">${fmt(s.sl)} \u00B7 -${money(k*m*rp)}</b></div>`+
       (s.tps||[]).map((t,i)=>`<div class="rw2"><span>TP${i+1} \u00B7 ${fR(t.r)}R \u00B7 ${t.why}</span><b class="pos">${fmt(t.px)}${usd(t.px)}</b></div>`).join('')+
-      `<small class="mut">Take part profit at TP1 and move the stop to break-even.</small>`}
+      `<small class="mut">Take part profit at TP1 (2R) and move the stop to break-even.</small>`}
   else if(r.watch){const w=r.watch;
     o.innerHTML=`<div class="tpb"><b>Watching for a ${w.side}</b></div><div class="rw2"><span>Order block zone</span><b>${fmt(w.z.l)} \u2013 ${fmt(w.z.h)}</b></div>`+
       (w.lvl?`<div class="rw2"><span>MSNR ${w.side==='SELL'?'A':'V'}-level</span><b>${fmt(w.lvl)}</b></div>`:'')+`<small class="mut">Waiting for a rejection candle at this zone.</small>`}
@@ -635,7 +643,7 @@ $('mkc').onclick=e=>{const k=e.target.dataset.k;if(!k)return;mkf=k;mkc();buildSe
 
 function pman(side){if(!(running&&opened))return log('Press START first to get a live price');readCfg();const g=viewG,s=series[g];
   if(!s||s.length<30)return log('Waiting for price data');if((pp.list||[]).length>=MAXT)return log('Max open trades ('+MAXT+'): close one first');
-  const px=+s[s.length-1].c,a=atr(s.slice(0,-1)),dir=side==='BUY'?1:-1,d=1.5*a,sl=px-dir*d,rp=d/px,stake=cfg.stake,td=d*cfg.rr*($('tps').checked?.8:1);
+  const px=+s[s.length-1].c,a=atr(s.slice(0,-1)),dir=side==='BUY'?1:-1,d=1.5*a,sl=px-dir*d,rp=d/px,stake=cfg.stake,td=d*Math.max(2,cfg.rr);
   if(lotOn()){const pl=lotPlan(px,sl);if(!pl)return;paperOpen(g,{side,entry:px,sl},pl.m,pl.stake,pl.slAmt,px+dir*td,pl.lots*pl.cs*td);return render()}
   if(!(stake>=1))return log('Choose a stake of at least $1');if(stake>pp.bal)return log('Paper balance too low');
   let m=cfg.auto?(pickMult(rp)||Math.max(1,Math.round(cfg.f/rp))):(cfg.mult||1),slAmt=stake*m*rp;
@@ -646,8 +654,8 @@ $('pclose').onclick=()=>{if(!pp.open)return log('No open paper trade');if(pp.ope
 
 var acct=null,go=null,lastScan=0;
 function showAcct(){$('acct').textContent=acct?`${acct.v?'DEMO':'REAL'} ${acct.id}: ${acct.cur||''} ${acct.bal.toFixed(2)}`:''}
-function autoSet(){if(!acct||!$('auto').checked)return;const b=acct.bal,k=Math.max(1,Math.min(Math.round(b*.02),1000));$('stake').value=k;$('maxl').value=b<100?2:3;$('minScore').value=65;applyCfg();
-  log(`Auto settings for ${acct.cur||''} ${b.toFixed(2)}: stake ${k} (2% of balance), max losses ${$('maxl').value} a day, min score 65`)}
+function autoSet(){if(!acct||!$('auto').checked)return;const b=acct.bal,k=Math.max(1,Math.min(Math.round(b*.02),1000));$('stake').value=k;$('maxl').value=b<100?2:3;$('minScore').value=80;applyCfg();
+  log(`Auto settings for ${acct.cur||''} ${b.toFixed(2)}: stake ${k} (2% of balance), max losses ${$('maxl').value} a day, min score 80`)}
 $('scalp').onchange=()=>{if($('scalp').checked){active.add(60);chips();if(MODE==='paper')$('paper').checked=true;applyCfg();log('Scalper ON: scans every minute and trades the best 1m setup')}else log('Scalper OFF')};
 setInterval(()=>{if(!$('scalp').checked||!(running&&opened)||pp.open||st.open||Date.now()-lastScan<60000)return;lastScan=Date.now();$('rscan').onclick();setTimeout(scalpPick,8000)},5000);
 function scalpPick(){if(!$('scalp').checked||pp.open||st.open)return;const b=radar.find(o=>o.r.status==='SIGNAL'&&o.r.sig&&!o.r.sig.skip&&o.r.score>=cfg.minScore);
@@ -674,7 +682,7 @@ const _pp=paintPaper;paintPaper=()=>{_pp();const T=pp.trades,W=T.filter(t=>t.pnl
   $('pstat').textContent=T.length?`${T.length} trades | win ${Math.round(100*W.length/T.length)}% | profit factor ${gl?(gw/gl).toFixed(2):'n/a'} | avg win ${W.length?money(gw/W.length):'-'} | avg loss ${Ls.length?money(-gl/Ls.length):'-'}`:'No paper trades yet'};
 
 const LES=[['1. Risk first','Risk 1-2% of your balance per trade. The stop-loss distance decides the position size, not your hopes. Use the calculator above.'],
-['2. Reading the plan','Entry is where you get in, stop is where the idea is wrong, TP1-TP3 are targets. R means multiples of your risk: 2R wins twice what you risk. At TP1 take some profit and move the stop to break-even.'],
+['2. Reading the plan','Entry is where you get in, stop is where the idea is wrong, TP1-TP3 are targets at 2R, 3R and 4.5R (nothing shorter). R means multiples of your risk: 2R wins twice what you risk. At TP1 take some profit and move the stop to break-even; the paper trade closes at TP2.'],
 ['3. MSNR + order block (main)','MSNR marks fresh support and resistance levels. An order block is the last opposite candle before a strong move. The main strategy waits for price to retest an order block at a fresh level, in the direction of the higher timeframe.'],
 ['4. Fair value gap','A three-candle gap where price moved so fast it left an imbalance. Price often returns to refill it, then continues.'],
 ['5. Liquidity sweep','A wick runs past an obvious high or low where stops sit, then closes back inside. It can mark a reversal.'],
@@ -843,7 +851,7 @@ const _pp5=paintPaper;paintPaper=()=>{_pp5();const r=res[viewG],g=r&&r.sig;
   $('lotinfo').textContent=!lotOn()?'Stake and multiplier mode: Deriv sizing. Pick Fixed lot or Risk % to size like MT5 (paper only; Deriv multiplier orders have no lots).':
     g?(()=>{const pl=lotPlan(g.entry,g.sl,1);return pl?`Signal size: ${pl.lots.toFixed(2)} lots, notional ${money(pl.lots*pl.cs*g.entry)}, margin ${money(pl.stake)} (1:${pl.m}), risk ${money(pl.slAmt)}`:'Not enough margin for 0.01 lot'})():'Waiting for a signal to size.'};
 
-const _rc=readCfg;readCfg=()=>{_rc();if($('tps').checked){cfg.rr=Math.min(cfg.rr,1);cfg.smart=true}};$('tps').onchange=()=>{analyzeAll();applyCfg()};
+const _rc=readCfg;readCfg=()=>{_rc();cfg.rr=Math.max(2,+cfg.rr||2);cfg.msnr=true};if($('room'))$('room').onchange=()=>{analyzeAll();applyCfg()};
 // News filter: high-impact events from a free calendar feed plus your own list (UTC)
 let NF=[],NM=[],NT=[],NEWS=[];
 const newsCur=sy=>/^(cry|MGC|OTC_SPC|OTC_NDX|OTC_DJI|frxXA)/.test(sy)?['USD']:sy==='OTC_FTSE'?['GBP']:sy==='OTC_GDAXI'?['EUR']:sy==='OTC_N225'?['JPY']:(m=>m?[m[1],m[2]]:[])(/^frx([A-Z]{3})([A-Z]{3})/.exec(sy||''));
@@ -1054,8 +1062,8 @@ add(T,pk[2],pk[3],...qs('livet','lt'),mk[9],mk[10],mk[11],mk[12],mk[13]);pk[2].c
 add(R,...qs('lott','lotmode','lotchips','lev','lotinfo','dll','calct','calc1','calc2','cuse','cout'));
 add(P,...qs('salert','snd','vol'));
 add(L,...qs('tutort','tutor','lessonst','lessons'));
-const TPc=card('Targets & tester','short TPs, checked first'),NWc=card('News & events','avoid trades near news'),PLc=card('Trading plan','one system, few trades, 90 days');
-add(TPc,...qs('tps','tver'));add(NWc,...qs('nws','nwb','nwm','nwst','evq','evl'));
+const TPc=card('Targets','strict: 2R and up'),NWc=card('News & events','avoid trades near news'),PLc=card('Trading plan','one system, few trades, 90 days');
+add(TPc,...qs('tps','room'));add(NWc,...qs('nws','nwb','nwm','nwst','evq','evl'));
 PLc.insertAdjacentHTML('beforeend',`<div class="grid" style="margin-top:10px">
 <div class="stat"><small>Total return</small><b id="pl_ret">0%</b></div><div class="stat"><small>Max drawdown</small><b id="pl_dd">0%</b></div>
 <div class="stat"><small>Trades (won / lost)</small><b id="pl_n">0</b></div><div class="stat"><small>Win rate</small><b id="pl_wr">-</b></div>
@@ -1108,20 +1116,20 @@ const save=()=>{try{localStorage.setItem('nb_sigs',JSON.stringify(SIG))}catch(e)
 function note(g){if(Date.now()-g.ts>108e5)return;const n=nm(g.sy)+' '+g.side;
   if(g.st==='sl')notify('Stop loss hit',n,'sl');else if(g.st==='won'&&g.hit>=g.tps.length)notify('All TPs hit',n,'won');else if(g.st==='won')notify('Closed at break-even after TP'+g.hit,n,'be');else notify('TP'+g.hit+' hit',n+' at '+fmt(g.tps[g.hit-1].px),'tp'+g.hit)}
 function ev(g,cs){if(g.st!=='live')return 0;let ch=0;const now=Date.now()/1000;
-  for(const c of cs){if(c.t<=g.ev)continue;if(c.t+(g.tf||900)<=now)g.ev=c.t;const b=g.side==='BUY',stop=g.hit>1?g.entry:g.sl;
-    if(b?c.l<=stop:c.h>=stop){g.st=g.hit>1?'won':'sl';ch=1;note(g);break}
+  for(const c of cs){if(c.t<=g.ev)continue;if(c.t+(g.tf||900)<=now)g.ev=c.t;const b=g.side==='BUY',stop=g.hit>0?g.entry:g.sl;
+    if(b?c.l<=stop:c.h>=stop){g.st=g.hit>0?'won':'sl';ch=1;note(g);break}
     while(g.hit<g.tps.length&&(b?c.h>=g.tps[g.hit].px:c.l<=g.tps[g.hit].px)){g.hit++;ch=1;if(g.hit<g.tps.length)note(g)}
     if(g.hit>=g.tps.length){g.st='won';note(g);break}}
   return ch}
 function addSig(sy,s,score,t,tf){tf=tf||900;if(!s||s.skip||!s.tps||!s.tps.length)return;
   if(SIG.some(x=>x.sy===sy&&x.tf===tf&&x.side===s.side&&(x.st==='live'||Date.now()-x.ts<Math.max(36e5,tf*4e3))))return;
-  SIG.unshift({sy,tf,stg:cfg.strat||'msnr',lvl:s.lvl!==undefined,side:s.side,entry:s.entry,sl:s.sl,tps:s.tps.map(x=>({px:x.px,r:x.r})),score,t,ev:t,hit:0,st:'live',ts:Date.now()});SIG=SIG.slice(0,150);save();feed();
+  SIG.unshift({sy,tf,stg:cfg.strat||'msnr',lvl:s.lvl!==undefined,side:s.side,entry:s.entry,sl:s.sl,tps:s.tps.map(x=>({px:x.px,r:x.r})),score,t,ev:t,hit:0,st:'live',ts:Date.now(),br:s.brain?s.brain.checks.map(k=>[k.n,k.p,k.m,k.t]):null});SIG=SIG.slice(0,150);save();feed();
   if(Date.now()/1000-t<tf*2+60)notify(s.side+' '+nm(sy)+' · '+TFN(tf),'Entry '+fmt(s.entry)+' | SL '+fmt(s.sl)+' | '+s.tps.map((x,i)=>'TP'+(i+1)+' '+fmt(x.px)).join(' | '),'new'+sy+tf)}
 window.nbAddSig=addSig;
 const ini=n=>n.replace(/[^A-Za-z]/g,'').slice(0,3).toUpperCase()||'MKT',stat=g=>g.st==='sl'?['SL Hit','#ff5d7a']:g.st==='won'?['Won','#2de2a6']:g.hit?[g.hit+' TP Hit','#2de2a6']:['Live','#7c9cff'];
 const TFNm={60:'1m',300:'5m',900:'15m',1800:'30m',3600:'1h',14400:'4h',86400:'1D',604800:'1W'},TFN=x=>TFNm[x||900]||'15m';
 function card(g,i){const b=g.side==='BUY',n=nm(g.sy),t=stat(g),tp=j=>{const x=g.tps[j];if(!x)return'';const h=g.hit>j;return '<div class="sp-tp'+(h?' hit':'')+'"><span>'+(h?'✓':'○')+' TP'+(j+1)+'</span><b>'+fmt(x.px)+'</b><small>'+fR(x.r)+'R</small></div>'};
-  return '<div class="sp-card"><div class="sp-h"><i class="sp-ic">'+ini(n)+'</i><b>'+n+' <u class="sp-tf">'+TFN(g.tf)+'</u></b><em class="'+(b?'b':'s')+'">'+(b?'↗ BUY':'↘ SELL')+'</em><span style="color:'+t[1]+'">● '+t[0]+' · '+ago(g.ts)+'</span></div><div class="sp-g"><div><small>ENTRY</small><b>'+fmt(g.entry)+'</b></div><div class="sl"><small>SL'+(g.hit>1?' · BE':'')+'</small><b>'+fmt(g.hit>1?g.entry:g.sl)+'</b></div><div class="t1"><small>'+(g.hit>0?'✓ ':'')+'TP1 · '+fR(g.tps[0].r)+'R</small><b>'+fmt(g.tps[0].px)+'</b></div></div><div class="sp-t">'+tp(1)+tp(2)+'</div><div class="sp-f"><small>'+TFN(g.tf)+' · '+((window.nbStName?window.nbStName(g.stg):g.stg))+' · '+new Date(g.ts).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+' · score '+g.score+'</small><span><button data-ch="'+i+'">Chart</button><button data-dt="'+i+'">Details ›</button></span></div>'+(g.open?'<div class="sp-d">Risk '+(Math.abs(g.entry-g.sl)/g.entry*100).toFixed(2)+'% of price. Stop moves to entry after TP2. Signal found '+new Date(g.ts).toLocaleString()+'.</div>':'')+'</div>'}
+  return '<div class="sp-card"><div class="sp-h"><i class="sp-ic">'+ini(n)+'</i><b>'+n+' <u class="sp-tf">'+TFN(g.tf)+'</u></b><em class="'+(b?'b':'s')+'">'+(b?'↗ BUY':'↘ SELL')+'</em><span style="color:'+t[1]+'">● '+t[0]+' · '+ago(g.ts)+'</span></div><div class="sp-g"><div><small>ENTRY</small><b>'+fmt(g.entry)+'</b></div><div class="sl"><small>SL'+(g.hit>0?' · BE':'')+'</small><b>'+fmt(g.hit>0?g.entry:g.sl)+'</b></div><div class="t1"><small>'+(g.hit>0?'✓ ':'')+'TP1 · '+fR(g.tps[0].r)+'R</small><b>'+fmt(g.tps[0].px)+'</b></div></div><div class="sp-t">'+tp(1)+tp(2)+'</div><div class="sp-f"><small>'+TFN(g.tf)+' · '+((window.nbStName?window.nbStName(g.stg):g.stg))+' · '+new Date(g.ts).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+' · score '+g.score+'</small><span><button data-ch="'+i+'">Chart</button><button data-dt="'+i+'">Details ›</button></span></div>'+(g.open?'<div class="sp-d">Risk '+(Math.abs(g.entry-g.sl)/g.entry*100).toFixed(2)+'% of price. Stop moves to entry after TP1. Signal found '+new Date(g.ts).toLocaleString()+'.'+(g.br?'<div class="sp-br"><b>Brain approved it: '+g.score+'/100</b>'+g.br.map(k=>'<div><span>'+k[0]+'</span><i class="'+(k[1]>=k[2]*.6?'g':k[1]<=0?'r':'')+'">'+(k[1]>0?'+':'')+k[1]+'/'+k[2]+'</i><small>'+k[3]+'</small></div>').join('')+'</div>':'')+'</div>':'')+'</div>'}
 const SH=mk('<div class="row"><b style="font-size:20px">Signals &middot; all timeframes</b></div><div class="fl" id="fl"><button data-f="all" class="on">All</button><button data-f="live">Live</button><button data-f="closed">Closed</button></div><div class="fl" id="tff" style="flex-wrap:wrap"><button data-g="all" class="on">All TF</button>'+[60,300,900,1800,3600,14400,86400,604800].map(x=>'<button data-g="'+x+'">'+TFN(x)+'</button>').join('')+'</div>','', 'sig'),SF=mk('','', 'sig');SF.id='sf';
 SH.querySelector('.row').appendChild($('sgscan'));const sgs=$('sgstat');SH.appendChild(sgs);sgs.style.cssText='display:block;opacity:.7;font-size:12px';
 const HG=mk('','glass','home'),HL=mk('','glass','home'),QG=mk('','qg','home'),CS=mk('','sp-card','chart'),CB=mk('<button class="chip" id="cback">← Back to signals</button>','row','chart'),TV=mk('<div class="row"><b>TradingView &middot; 15m</b></div>','glass','chart');
@@ -1129,7 +1137,7 @@ TV.querySelector('.row').appendChild($('tvsel'));TV.appendChild($('tvbox'));
 const ics={sc:'<circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/>',sig:'<path d="M4 18a8 8 0 0 1 0-12M20 6a8 8 0 0 1 0 12M8 15a4 4 0 0 1 0-6M16 9a4 4 0 0 1 0 6"/><circle cx="12" cy="12" r="1"/>',chart:'<path d="M3 17l5-6 4 3 8-9"/><path d="M3 21h18"/>',tk:'<path d="M7 7h13l-3-3M17 17H4l3 3"/>',au:'<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>',rk:'<path d="M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z"/>',lb:'<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/>',pf:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 15-5 16 0"/>',hm:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',tl:'<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>',bk:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5"/>'};
 const svg=d=>'<svg viewBox="0 0 24 24">'+d+'</svg>';
 QG.innerHTML=[['Scan','sc','scan'],['Signals','sig','sig'],['Chart','chart','chart'],['Ticket','tk','tools'],['Automation','au','tools'],['Risk','rk','prof'],['Strategy lab','lb','prof'],['Profile','pf','prof']].map(([n,i,g])=>'<button data-go="'+g+'"><i>'+svg(ics[i])+'</i>'+n+'</button>').join('');
-const G={home:[HG,dash,HL,QG,F('Trading plan')],sig:[SH,SF],tools:[sec('Trading mode','tools'),mode,sec('Place a trade','tools'),T,sec('Open trades and balance','tools'),pc,sec('Automation','tools'),rad],chart:[CB,CS,ct,bs,gr,TV],prof:[sec('Strategy and targets','prof'),mc,F('Targets & tester'),F('News & events'),sec('Limits and alerts','prof'),R,P,sec('Broker','prof'),dv,sec('App','prof'),st,sec('Practice and learning','prof'),lab,Lc,sec('Log','prof'),lg,ds]};
+const G={home:[HG,dash,HL,QG,F('Trading plan')],sig:[SH,SF],tools:[sec('Trading mode','tools'),mode,sec('Place a trade','tools'),T,sec('Open trades and balance','tools'),pc,sec('Automation','tools'),rad],chart:[CB,CS,ct,bs,gr,TV],prof:[sec('Strategy and targets','prof'),mc,F('Targets'),F('News & events'),sec('Limits and alerts','prof'),R,P,sec('Broker','prof'),dv,sec('App','prof'),st,sec('Practice and learning','prof'),lab,Lc,sec('Log','prof'),lg,ds]};
 S.style.display='none';try{$('tkm')}catch(e){}
 Object.keys(G).forEach(k=>G[k].filter(Boolean).forEach(e=>{e.dataset.tab=k;A.appendChild(e)}));
 function lastOf(sy){return SIG.find(g=>g.sy===sy)}
@@ -1157,9 +1165,9 @@ const _po=paperOverlay;paperOverlay=(x,s,off,bw,W,Y)=>{_po(x,s,off,bw,W,Y);try{c
   SIG.filter(g=>g.sy===cfg.symbol).slice(0,6).forEach((g,n)=>{const ci=idx(g.t),i=ci-off,c=s[ci];if(!c||i<0||(i+.5)*bw>W)return;const b=g.side==='BUY',col=b?'45,226,166':'255,93,122',xx=(i+.5)*bw,y=b?Y(c.l)+16:Y(c.h)-16;
     x.fillStyle='rgb('+col+')';x.beginPath();if(b){x.moveTo(xx,y-9);x.lineTo(xx-7,y+4);x.lineTo(xx+7,y+4)}else{x.moveTo(xx,y+9);x.lineTo(xx-7,y-4);x.lineTo(xx+7,y-4)}x.fill();x.font='bold 11px Inter,system-ui';x.fillText(g.side,xx-12,b?y+17:y-12);
     if(n===0&&!cur){const hl=(v,c2,t)=>{const yy=Y(v);x.setLineDash([2,4]);x.strokeStyle='rgba('+c2+',.75)';x.beginPath();x.moveTo(xx,yy);x.lineTo(W,yy);x.stroke();x.setLineDash([]);x.fillStyle='rgb('+c2+')';x.fillText(t,W-74,yy-3)};
-      hl(g.entry,'124,156,255','ENTRY');hl(g.hit>1?g.entry:g.sl,'255,93,122','SL');g.tps.forEach((t,j)=>hl(t.px,'45,226,166','TP'+(j+1)+(g.hit>j?' ✓':'')))}})}catch(e){}};
-const _pt=paperTick;paperTick=(p,f)=>{_pt(p,f);let ch=0;SIG.forEach(g=>{if(g.sy!==cfg.symbol||g.st!=='live')return;const b=g.side==='BUY',stop=g.hit>1?g.entry:g.sl;
-  if(b?p<=stop:p>=stop){g.st=g.hit>1?'won':'sl';ch=1;note(g);return}
+      hl(g.entry,'124,156,255','ENTRY');hl(g.hit>0?g.entry:g.sl,'255,93,122','SL');g.tps.forEach((t,j)=>hl(t.px,'45,226,166','TP'+(j+1)+(g.hit>j?' ✓':'')))}})}catch(e){}};
+const _pt=paperTick;paperTick=(p,f)=>{_pt(p,f);let ch=0;SIG.forEach(g=>{if(g.sy!==cfg.symbol||g.st!=='live')return;const b=g.side==='BUY',stop=g.hit>0?g.entry:g.sl;
+  if(b?p<=stop:p>=stop){g.st=g.hit>0?'won':'sl';ch=1;note(g);return}
   while(g.hit<g.tps.length&&(b?p>=g.tps[g.hit].px:p<=g.tps[g.hit].px)){g.hit++;ch=1;if(g.hit<g.tps.length)note(g)}
   if(g.hit>=g.tps.length){g.st='won';ch=1;note(g)}});if(ch){save();feed()}};
 /* multi-timeframe scanner: every market on 1m,5m,15m,30m,1h,4h */
@@ -1197,7 +1205,7 @@ function ppMulti(){const d=Object.getOwnPropertyDescriptor(pp,'open');if(d&&d.ge
   const keep=(Array.isArray(pp.list)?pp.list:[]).filter(o=>o&&o.entry&&o.sl);Object.defineProperty(pp,'_o',{value:null,writable:true,enumerable:false});pp.list=[];
   Object.defineProperty(pp,'open',{enumerable:false,configurable:true,get(){return this._o},set(v){if(v){if(!this.list.includes(v))this.list.push(v);this._o=v}else{if(this._o)this.list=this.list.filter(x=>x!==this._o);this._o=this.list[this.list.length-1]||null}try{ppSave()}catch(e){}}});keep.forEach(o=>{pp.open=o})}
 ppMulti();
-function openBlock(g,s){const l=pp.list||[],pb=planBlock()||riskBlock();if(pb)return pb;if(l.some(o=>o.sym===cfg.symbol&&o.tf===L[g]&&o.side===s.side))return'same signal already open';const tt=s.tps&&s.tps.test;if(tt&&!tt.ok&&$('tver').checked)return'tester: not profitable on recent candles ('+(tt.ex>=0?'+':'')+tt.ex.toFixed(2)+'R)';return l.length>=MAXT?'max open trades ('+MAXT+')':''}
+function openBlock(g,s){const l=pp.list||[],pb=planBlock()||riskBlock();if(pb)return pb;if(l.some(o=>o.sym===cfg.symbol&&o.tf===L[g]&&o.side===s.side))return'same signal already open';return l.length>=MAXT?'max open trades ('+MAXT+')':''}
 const _pk=paperTick;paperTick=(price,force)=>{if(force||pp.list.length<2)return _pk(price,force);pp.list.slice().forEach(o=>{if(pp.list.includes(o)){pp._o=o;_pk(price,force)}});pp._o=pp.list[pp.list.length-1]||null};
 function closeOne(i){const o=pp.list[i];if(!o)return;if(o.sym!==cfg.symbol)return log('Switch to '+o.sym+' to close it');const s=series[viewG];if(!s||!s.length)return;pp._o=o;paperTick(+s[s.length-1].c,true)}
 $('pclose').onclick=()=>{if(!pp.list.length)return log('No open paper trade');const s=series[viewG],m=pp.list.filter(o=>o.sym===cfg.symbol);if(!m.length)return log('Switch to '+pp.list[0].sym+' to close it');if(s&&s.length)m.forEach(o=>{pp._o=o;paperTick(+s[s.length-1].c,true)})};
@@ -1575,6 +1583,11 @@ if(typeof sfx==='function'){const _s=sfx;sfx=k=>{_s(k);const V={fill:'Order fill
 <script>
 // Keep every setting across minimize / reload; resume the bot if it was running (paper account only)
 (function(){const KEY='nb_set',skip=/tok|pass|secret|api/i;let S={};try{S=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
+  // one-time move to the strict set-up: combined MSNR strategy, 2R+ targets only, min score 75 (old saved values would bring the short targets back)
+  try{if(!localStorage.getItem('nb_brain1')){localStorage.setItem('nb_brain1','1');S.minScore=String(Math.max(80,+S.minScore||0));localStorage.setItem(KEY,JSON.stringify(S))}}catch(e){}
+  try{if(!localStorage.getItem('nb_msnrc1')){localStorage.setItem('nb_msnrc1','1');localStorage.setItem('nb_cf1','1');
+    if(!S.strat||/^(conf|msnr|mav|rbs|qml|ocl|tl|ce50)$/.test(S.strat))S.strat='msnrc';
+    S.minScore=String(Math.max(80,+S.minScore||0));S.smart=true;S.msnr=true;S.room=true;S.rr=String(Math.max(2,+S.rr||2));delete S.tps;delete S.tver;localStorage.setItem(KEY,JSON.stringify(S))}}catch(e){}
   const els=()=>[...document.querySelectorAll('input[id],select[id],textarea[id]')].filter(e=>!['password','button','file'].includes(e.type)&&!skip.test(e.id)),
     val=e=>e.type==='checkbox'||e.type==='radio'?e.checked:e.value;
   els().forEach(e=>{if(!(e.id in S))return;
@@ -2093,6 +2106,148 @@ function crt(cs,b,lv,a){const n=cs.length;if(n<30)return null;const c=cs[n-1],p=
 FN.crt=crt;NAMES.crt='Candle Range Theory (CRT)';
 DESC.crt='Range candle swept on one side, then the next candle closes back inside with a rejection wick. Targets the 50% and the far side of the range. Needs higher-timeframe bias.';
 GROUPS.unshift({label:'Candle Range Theory',ids:['crt']});BOOK.unshift(['Candle Range Theory',['crt']]);
+
+/* ---------- MSNR series (levels come from the closing-price line, never wicks) ---------- */
+const lvls=cs=>{const A=[],V=[],n=cs.length;for(let i=Math.max(1,n-120);i<n-2;i++){const p=cs[i-1].c,x=cs[i].c,q=cs[i+1].c;if(x>p&&x>q)A.push({i,v:x});else if(x<p&&x<q)V.push({i,v:x})}return{A,V}};
+const lw_=c=>Math.min(c.o,c.c)-c.l,uw_=c=>c.h-Math.max(c.o,c.c);
+// A-level / V-level: first retest of an untouched level, rejection wick, close back on the right side
+function mav(cs,b,lv,a){const n=cs.length,c=cs[n-1],t=a*.25,f=buf(a),L=lvls(cs),cr=rng(c);
+  const fr=(l,up)=>{for(let j=l.i+2;j<n-1;j++)if(up?cs[j].l<=l.v:cs[j].h>=l.v)return false;return true};
+  for(const l of L.V)if(fr(l,1)&&c.l<=l.v+t&&c.c>l.v&&bull(c)&&lw_(c)>=.3*cr)return Q(c,a,'BUY',cap('BUY',c,Math.min(c.l,l.v)-f,a),26+Math.min(10,lw_(c)/cr*14),'V-LEVEL');
+  for(const l of L.A)if(fr(l,0)&&c.h>=l.v-t&&c.c<l.v&&!bull(c)&&uw_(c)>=.3*cr)return Q(c,a,'SELL',cap('SELL',c,Math.max(c.h,l.v)+f,a),26+Math.min(10,uw_(c)/cr*14),'A-LEVEL');
+  return null}
+// RBS / SBR: level broken by a close, price held beyond it, now retests it as the opposite side
+function rbs(cs,b,lv,a){const n=cs.length,c=cs[n-1],t=a*.25,f=buf(a),L=lvls(cs),cr=rng(c);
+  for(const l of L.A){let k=-1;for(let j=l.i+2;j<n-1;j++)if(cs[j].c>l.v+t){k=j;break}
+    if(k<0||n-1-k<2)continue;let h=true;for(let j=k;j<n-1;j++)if(cs[j].c<l.v-t){h=false;break}
+    if(h&&c.l<=l.v+t&&c.c>l.v&&bull(c))return Q(c,a,'BUY',cap('BUY',c,Math.min(c.l,l.v)-f,a),24+Math.min(10,lw_(c)/cr*14),'RBS')}
+  for(const l of L.V){let k=-1;for(let j=l.i+2;j<n-1;j++)if(cs[j].c<l.v-t){k=j;break}
+    if(k<0||n-1-k<2)continue;let h=true;for(let j=k;j<n-1;j++)if(cs[j].c>l.v+t){h=false;break}
+    if(h&&c.h>=l.v-t&&c.c<l.v&&!bull(c))return Q(c,a,'SELL',cap('SELL',c,Math.max(c.h,l.v)+f,a),24+Math.min(10,uw_(c)/cr*14),'SBR')}
+  return null}
+// Quasimodo: trend structure breaks (MSS), then the QML (the broken swing) is retested from the other side
+function qml(cs,b,lv,a){const n=cs.length,c=cs[n-1],t=a*.25,f=buf(a),S=swings(cs.slice(0,n-1),2),H=S.H,W=S.W;if(H.length<2||W.length<2)return null;
+  const h1=H[H.length-1],h0=H[H.length-2],l1=W[W.length-1],l0=W[W.length-2];
+  if(cs[h1].h>cs[h0].h&&cs[l1].l>cs[l0].l&&l1<h1){const q=cs[l1].l;let k=-1;for(let j=h1+1;j<n-1;j++)if(cs[j].c<q-t){k=j;break}
+    if(k>0&&c.h>=q-t&&c.c<q&&!bull(c)&&cs[h1].h-q>1.2*a)return Q(c,a,'SELL',cap('SELL',c,cs[h1].h+f,a),28+Math.min(8,(cs[h1].h-q)/a*3),'QML')}
+  if(cs[h1].h<cs[h0].h&&cs[l1].l<cs[l0].l&&h1<l1){const q=cs[h1].h;let k=-1;for(let j=l1+1;j<n-1;j++)if(cs[j].c>q+t){k=j;break}
+    if(k>0&&c.l<=q+t&&c.c>q&&bull(c)&&q-cs[l1].l>1.2*a)return Q(c,a,'BUY',cap('BUY',c,cs[l1].l-f,a),28+Math.min(8,(q-cs[l1].l)/a*3),'QML')}
+  return null}
+// OCL: a bear close meeting a bull open (or the reverse) marks a level; first retest with rejection
+function ocl(cs,b,lv,a){const n=cs.length,c=cs[n-1],t=a*.2,f=buf(a),cr=rng(c);
+  for(let i=Math.max(1,n-80);i<n-3;i++){const x=cs[i],y=cs[i+1];if(Math.abs(x.c-y.o)>.1*a)continue;
+    if(!bull(x)&&bull(y)){const v=y.o;let ok=true;for(let j=i+2;j<n-1;j++)if(cs[j].l<=v+t){ok=false;break}
+      if(ok&&c.l<=v+t&&c.c>v&&bull(c)&&lw_(c)>=.25*cr)return Q(c,a,'BUY',cap('BUY',c,Math.min(c.l,v)-f,a),24+Math.min(10,lw_(c)/cr*14),'OCL')}
+    if(bull(x)&&!bull(y)){const v=y.o;let ok=true;for(let j=i+2;j<n-1;j++)if(cs[j].h>=v-t){ok=false;break}
+      if(ok&&c.h>=v-t&&c.c<v&&!bull(c)&&uw_(c)>=.25*cr)return Q(c,a,'SELL',cap('SELL',c,Math.max(c.h,v)+f,a),24+Math.min(10,uw_(c)/cr*14),'OCL')}}
+  return null}
+// Trendline: two swing points (6+ bars apart), line still unbroken, touch then reaction
+function tline(cs,b,lv,a){const n=cs.length,c=cs[n-1],t=a*.25,f=buf(a),cr=rng(c),S=swings(cs.slice(0,n-1),3),W=S.W.slice(-2),H=S.H.slice(-2);
+  if(W.length===2&&W[1]-W[0]>=6&&cs[W[1]].l>cs[W[0]].l){const y0=cs[W[0]].l,y1=cs[W[1]].l,m=(y1-y0)/(W[1]-W[0]),ln=y1+m*(n-1-W[1]);let br=false;
+    for(let j=W[1]+1;j<n-1;j++)if(cs[j].c<y1+m*(j-W[1])-t){br=true;break}
+    if(!br&&c.l<=ln+t&&c.c>ln&&bull(c)&&lw_(c)>=.25*cr)return Q(c,a,'BUY',cap('BUY',c,Math.min(c.l,ln)-f,a),24+Math.min(10,lw_(c)/cr*14),'TRENDLINE')}
+  if(H.length===2&&H[1]-H[0]>=6&&cs[H[1]].h<cs[H[0]].h){const y0=cs[H[0]].h,y1=cs[H[1]].h,m=(y1-y0)/(H[1]-H[0]),ln=y1+m*(n-1-H[1]);let br=false;
+    for(let j=H[1]+1;j<n-1;j++)if(cs[j].c>y1+m*(j-H[1])+t){br=true;break}
+    if(!br&&c.h>=ln-t&&c.c<ln&&!bull(c)&&uw_(c)>=.25*cr)return Q(c,a,'SELL',cap('SELL',c,Math.max(c.h,ln)+f,a),24+Math.min(10,uw_(c)/cr*14),'TRENDLINE')}
+  return null}
+// CE of wick 50%: a candle sweeps the last 10 bars' extreme with a long wick; price later returns to the wick's midpoint
+function cew(cs,b,lv,a){const n=cs.length,c=cs[n-1],t=a*.2,f=buf(a);
+  for(let i=Math.max(11,n-15);i<n-1;i++){const w=cs[i],r=rng(w),pl=mn(cs.slice(i-10,i),x=>x.l),ph=mx(cs.slice(i-10,i),x=>x.h);
+    if(w.l<pl&&lw_(w)>=.5*r&&w.c>pl){const ce=(w.l+Math.min(w.o,w.c))/2;let ok=true;for(let j=i+1;j<n-1;j++)if(cs[j].c<w.l||cs[j].l<=ce){ok=false;break}
+      if(ok&&c.l<=ce+t&&c.c>ce&&bull(c))return Q(c,a,'BUY',cap('BUY',c,w.l-f,a),26+Math.min(10,lw_(w)/r*10),'CE50')}
+    if(w.h>ph&&uw_(w)>=.5*r&&w.c<ph){const ce=(w.h+Math.max(w.o,w.c))/2;let ok=true;for(let j=i+1;j<n-1;j++)if(cs[j].c>w.h||cs[j].h>=ce){ok=false;break}
+      if(ok&&c.h>=ce-t&&c.c<ce&&!bull(c))return Q(c,a,'SELL',cap('SELL',c,w.h+f,a),26+Math.min(10,uw_(w)/r*10),'CE50')}}
+  return null}
+Object.assign(FN,{mav,rbs,qml,ocl,tl:tline,ce50:cew});
+Object.assign(NAMES,{mav:'A-level / V-level retest',rbs:'RBS / SBR flip',qml:'Quasimodo (QM / QML)',ocl:'Open-close level (OCL)',tl:'Trendline touch',ce50:'CE of wick 50%'});
+Object.assign(DESC,{mav:'First retest of an untouched closing-price peak (A) or trough (V), with a rejection wick.',rbs:'Level broken by a close, held, then retested as support (RBS) or resistance (SBR).',qml:'Trend structure breaks, then the broken swing (QML) is retested from the other side.',ocl:'Level where a close meets the next open at a turn; first retest with rejection.',tl:'Unbroken two-point trendline touched and rejected.',ce50:'Long sweep wick; entry when price returns to the wick midpoint.'});
+{const ids=['mav','rbs','qml','ocl','tl','ce50'];GROUPS.splice(1,0,{label:'MSNR series (levels)',ids});BOOK.splice(1,0,['MSNR series (levels)',ids])}
+/* ---------- PD array hierarchy (from the ICT thread) + the Brain ---------- */
+// Strongest to weakest: Mitigation > Breaker > Liquidity void > Fair value gap > Order block > Rejection block > Old high/low.
+const PDR={mit:[1,'Mitigation block',15],brk:[2,'Breaker block',13],void:[3,'Liquidity void',11],fvg:[4,'Fair value gap',9],ob:[5,'Order block',7],rej:[6,'Rejection block',5],old:[7,'Old high / low',3]};
+// dir +1 = bullish array (supports a BUY), -1 = bearish array (supports a SELL). The forming candle is never used.
+function pdArrays(cs,a){const h=cs.slice(0,-1),n=h.length,out=[];if(n<40||!(a>0))return out;
+  const add=(t,dir,top,bot,i)=>{if(top>bot)out.push({t,dir,top,bot,i,rank:PDR[t][0]})},first=(from,fn)=>{for(let k=Math.max(0,from);k<n;k++)if(fn(h[k]))return k;return -1};
+  const sw=swings(h,2),H=sw.H.filter(i=>i>n-90),W=sw.W.filter(i=>i>n-90);
+  // Mitigation block: price FAILS to take the previous high/low, then breaks structure with a displacement candle; the block is the failed peak/trough.
+  for(let j=1;j<H.length;j++){const i0=H[j-1],i1=H[j];if(!(h[i1].h<h[i0].h))continue;
+    const lo=mn(h.slice(i0,i1+1),x=>x.l),k=first(i1+1,x=>x.c<lo);if(k<0||body(h[k])<.6*a||first(k,x=>x.c>h[i1].h)>=0)continue;
+    add('mit',-1,h[i1].h,Math.min(h[i1].o,h[i1].c),i1)}
+  for(let j=1;j<W.length;j++){const i0=W[j-1],i1=W[j];if(!(h[i1].l>h[i0].l))continue;
+    const hi=mx(h.slice(i0,i1+1),x=>x.h),k=first(i1+1,x=>x.c>hi);if(k<0||body(h[k])<.6*a||first(k,x=>x.c<h[i1].l)>=0)continue;
+    add('mit',1,Math.max(h[i1].o,h[i1].c),h[i1].l,i1)}
+  // Order blocks and breakers (a breaker is an order block that failed and flipped)
+  const Z=zones(h);Z.bear.forEach(z=>add('ob',-1,z.h,z.l,z.i));Z.bull.forEach(z=>add('ob',1,z.h,z.l,z.i));Z.bk.forEach(z=>add('brk',-1,z.h,z.l,z.i));
+  for(let i=Math.max(1,n-100);i<n;i++){const p=h[i-1],c=h[i];if(Math.abs(c.c-c.o)<=a*cfg.disp)continue;
+    if(c.c<c.o&&c.c<p.l&&p.c>p.o){const k=first(i+1,x=>x.c>p.h);if(k>=0&&first(k+1,x=>x.c<p.l)<0)add('brk',1,p.h,p.l,i-1)}}
+  // Fair value gaps; a gap of one ATR or more counts as a liquidity void
+  for(let i=Math.max(2,n-45);i<n;i++){const x=h[i-2],m=h[i-1],y=h[i];
+    if(y.l-x.h>.25*a&&bull(m)&&body(m)>.5*a&&first(i+1,q=>q.c<x.h)<0)add(y.l-x.h>=a?'void':'fvg',1,y.l,x.h,i-1);
+    if(x.l-y.h>.25*a&&!bull(m)&&body(m)>.5*a&&first(i+1,q=>q.c>x.l)<0)add(x.l-y.h>=a?'void':'fvg',-1,x.l,y.h,i-1)}
+  // Rejection blocks: the wick of a long-wick candle
+  for(let i=Math.max(0,n-40);i<n-2;i++){const c=h[i],r=rng(c);if(r<.8*a)continue;
+    if(Math.min(c.o,c.c)-c.l>=.55*r)add('rej',1,Math.min(c.o,c.c),c.l,i);else if(c.h-Math.max(c.o,c.c)>=.55*r)add('rej',-1,c.h,Math.max(c.o,c.c),i)}
+  // Old highs / lows
+  sw.H.filter(i=>i>n-60&&i<n-3).forEach(i=>add('old',-1,h[i].h+.1*a,h[i].h-.1*a,i));sw.W.filter(i=>i>n-60&&i<n-3).forEach(i=>add('old',1,h[i].l+.1*a,h[i].l-.1*a,i));
+  return out}
+const pdTouch=(cs,a,arr)=>{const c=cs[cs.length-1],t=.25*a;return arr.filter(z=>c.h>=z.bot-t&&c.l<=z.top+t)};
+// Entry: the last candle rejects the best-ranked array (wick into it, close back out). A stronger opposing array in the same area cancels it.
+function pdEntry(cs,a,types){const n=cs.length,c=cs[n-1],f=buf(a),cr=rng(c);if(n<60)return null;
+  const arr=pdArrays(cs,a).filter(z=>!types||types.includes(z.t)),T=pdTouch(cs,a,arr),uw=c.h-Math.max(c.o,c.c),lw=Math.min(c.o,c.c)-c.l,
+    best=d=>T.filter(z=>z.dir===d&&(d>0?c.c>z.bot&&bull(c)&&lw>=.25*cr:c.c<z.top&&!bull(c)&&uw>=.25*cr)).sort((p,q)=>p.rank-q.rank)[0],B=best(1),S=best(-1);
+  if(B&&S&&B.rank===S.rank)return null;const pick=B&&(!S||B.rank<S.rank)?B:S;if(!pick)return null;
+  const d=pick.dir;if(T.some(z=>z.dir===-d&&z.rank<pick.rank))return null;
+  const side=d>0?'BUY':'SELL',sl=d>0?Math.min(c.l,pick.bot)-f:Math.max(c.h,pick.top)+f;
+  return Q(c,a,side,cap(side,c,sl,a),16+(8-pick.rank)*2.4+Math.min(6,(d>0?lw:uw)/cr*8),PDR[pick.t][1]+' (rank '+pick.rank+' of 7)')}
+const mit=(cs,b,lv,a)=>pdEntry(cs,a,['mit']),pdh=(cs,b,lv,a)=>pdEntry(cs,a,null);
+FN.mit=mit;FN.pdh=pdh;NAMES.mit='Mitigation block';NAMES.pdh='PD array hierarchy';
+DESC.mit='Price failed to take the previous high or low, then broke structure with a strong candle. The failed peak or trough is the mitigation block, the strongest array. The signal fires when price returns and rejects it.';
+DESC.pdh='Looks at every array (mitigation, breaker, liquidity void, FVG, order block, rejection block, old high/low) and trades the rejection of the highest-ranked one. A stronger array against the trade cancels it, so a weak order block never beats a mitigation block.';
+GROUPS.unshift({label:'PD arrays (hierarchy)',ids:['pdh','mit']});BOOK.unshift(['PD arrays (hierarchy)',['pdh','mit']]);
+
+/* THE BRAIN: every candidate signal is examined here before it is allowed to become a signal.
+   12 checks add up to a 0-100 score; any hard veto rejects it outright; below the minimum score it is rejected too. */
+const BRK=new Set(['tsm','lob','idx','idm','usd','gex','accum','stack','dshift','macro']),
+  CONS=['fvg','sweep','mss','manip','accum','pd','stack','absorb','dshift','fail','balance','value','crt','mav','rbs','qml','ocl','tl','ce50','mit','pdh'];
+function brain(sig,x){const cs=x.cs,n=cs.length,c=cs[n-1],a=x.a,dir=sig.side==='BUY'?1:-1,E=sig.entry,risk=Math.abs(E-sig.sl),ck=[],V=[],lv=x.lv||{A:[],V:[]};
+  const add=(name,p,m,note)=>ck.push({n:name,p:Math.round(Math.max(-12,Math.min(m,p))),m,t:note});
+  add('Higher-timeframe trend',x.b===dir?15:0,15,x.b===dir?'agrees':'neutral');
+  const W=cs.slice(-80),hi=mx(W,k=>k.h),lo=mn(W,k=>k.l),flat=(hi-lo)<=3*a,pos=flat?.5:(E-lo)/(hi-lo),dp=dir>0?pos:1-pos;
+  add(dir>0?'Discount (buy low)':'Premium (sell high)',flat?4:BRK.has(x.sk)?(dp<=.8?6:2):dp<=.382?12:dp<=.5?9:dp<=.62?4:dp<=.75?0:-8,12,flat?'range too small':Math.round(pos*100)+'% of range');
+  const arr=pdArrays(cs,a),T=pdTouch(cs,a,arr),by=d=>T.filter(z=>z.dir===d).sort((p,q)=>p.rank-q.rank)[0],sup=by(dir),opp=by(-dir);
+  let ap=sup?PDR[sup.t][2]:0,an=sup?PDR[sup.t][1]+' (rank '+sup.rank+' of 7)':'no array at entry';
+  if(opp&&(!sup||opp.rank<sup.rank)){if(opp.rank<=2)V.push('a '+PDR[opp.t][1].toLowerCase()+' outranks this entry');else if(opp.rank<=5){ap-=4;an+=', fights a '+PDR[opp.t][1].toLowerCase()}}
+  add('PD array at entry',ap,15,an);
+  const L=dir>0?lv.V||[]:lv.A||[],lt=.35*a,hasL=sig.lvl!==undefined||L.some(v=>v>=c.l-lt&&v<=c.h+lt);
+  add('Fresh MSNR level',hasL?10:0,10,hasL?'at a fresh '+(dir>0?'V':'A')+'-level':'none nearby');
+  const q=sig.q===undefined?26:sig.q;add('Setup quality',10*(q-12)/28,10,'quality '+Math.round(q));
+  const r=rng(c),pc=(c.c-c.l)/r,wk=dir>0?(Math.min(c.o,c.c)-c.l)/r:(c.h-Math.max(c.o,c.c))/r,cp=(bull(c)===(dir>0)?3:0)+((dir>0?pc>=.65:pc<=.35)?3:0)+(wk>=.2?2:0);
+  add('Candle confirmation',cp,8,cp>=6?'strong close':cp>=3?'average':'weak');
+  const ops=opposing(sig.side,x.Z,lv).map(([px,w])=>({r:dir*(px-E)/risk,w})).filter(t=>t.r>.25).sort((p,q)=>p.r-q.r),nr=ops[0],rr=nr?nr.r:99,roomOn=!$('room')||$('room').checked;
+  if(roomOn&&rr<1.9)V.push('blocked at '+rr.toFixed(1)+'R by a '+nr.w);
+  add('Room to target',rr>=4.5?12:rr>=3?9:rr>=1.9?6:0,12,nr?'next level at '+rr.toFixed(1)+'R':'clear path');
+  const vr=avgR(cs.slice(-14))/(avgR(cs.slice(-114,-14))||1e-9);
+  if(vr<.45||vr>3.5)V.push(vr<.45?'market is dead':'volatility is chaotic');   // a retest right after a displacement is naturally energetic, so only extremes are vetoed
+  add('Volatility',vr>=.7&&vr<=2.2?6:3,6,vr.toFixed(2)+'x normal');
+  const sy=x.sy||'',cl=clsOf(sy),hr=new Date(c.t*1000).getUTCHours(),h24=cl==='crypto'||/^(R_|1HZ|BOOM|CRASH|JD|RDB|cry)/.test(sy),liq=h24||(hr>=7&&hr<20);
+  add('Session',liq?4:0,4,liq?'liquid hours':'thin hours');
+  let nw=null;try{nw=newsHit(sy)}catch(e){}if(nw)V.push('high-impact news is near');
+  const em=k=>{let e=cs[0].c;const m=2/(k+1);for(let i=1;i<n;i++)e=cs[i].c*m+e*(1-m);return e},e50=em(50),e200=n>=200?em(200):e50,
+    ea=dir>0?(c.c>e50?3:0)+(e50>=e200?3:0):(c.c<e50?3:0)+(e50<=e200?3:0);
+  add('EMA 50/200 trend',ea,6,ea>=6?'aligned':ea>=3?'partly':'against');
+  const rec=cs.slice(-6),old=cs.slice(-26,-6),swp=dir>0?mn(rec,k=>k.l)<mn(old,k=>k.l):mx(rec,k=>k.h)>mx(old,k=>k.h);
+  add('Liquidity sweep',swp?4:0,4,swp?'liquidity taken first':'none');
+  const own=x.sk==='msnrc'?new Set(['mav','rbs','qml','ocl','tl','ce50']):x.sk==='ict'?new Set(ICT):x.sk==='of'?new Set(OF):new Set([x.sk]);let ag=0,op2=0;
+  for(const id of CONS){if(own.has(id)||!FN[id])continue;let r2=null;try{r2=FN[id](cs,x.b,lv,a)}catch(e){}if(r2&&r2.side&&!r2.skip){if(r2.side===sig.side)ag++;else op2++}}
+  if(op2>=3&&ag===0)V.push(op2+' other strategies point the opposite way');
+  add('Strategy agreement',ag*2-op2*3,6,ag+' agree, '+op2+' oppose');
+  const score=Math.max(0,Math.min(100,ck.reduce((t,k)=>t+k.p,0)));
+  return{score,checks:ck,veto:V[0]||null,vetoes:V}}
+// Rejected setups, newest first (shown in the Signals tab so you can see what the Brain stopped and why)
+const REJ=(()=>{try{return JSON.parse(localStorage.getItem('nb_rej')||'[]')}catch(e){return[]}})(),REJK=new Set();
+function rejLog(sig,x){const k=[x.sy,x.tf,sig.side,x.t,x.why].join('|');if(REJK.has(k))return;REJK.add(k);if(REJK.size>400)REJK.clear();
+  REJ.unshift({ts:Date.now(),sy:x.sy,tf:x.tf,side:sig.side,sk:x.sk,why:x.why,sc:x.sc});REJ.length=Math.min(REJ.length,60);try{localStorage.setItem('nb_rej',JSON.stringify(REJ))}catch(e){}}
+
 /* ---------- accuracy gate on every single strategy (market-participant order: bias, flow, price action, then lagging EMAs) ---------- */
 const gate=fn=>(cs,b,lv,a)=>{const s=fn(cs,b,lv,a);if(!s||!s.side)return s;const n=cs.length,c=cs[n-1];
   if(n>=60){let t=0;for(let i=n-50;i<n;i++)t+=cs[i].h-cs[i].l;if(a<.6*t/50)return null}   // dead market: no edge
@@ -2101,7 +2256,7 @@ const gate=fn=>(cs,b,lv,a)=>{const s=fn(cs,b,lv,a);if(!s||!s.side)return s;const
   const al=(up?c.c>e50&&e50>=e200:c.c<e50&&e50<=e200);
   s.q=Math.max(12,Math.min(40,(s.q||20)+(al?4:-6)));return s};
 Object.keys(FN).forEach(k=>{if(k!=='crt'||true)FN[k]=gate(FN[k])});
-return{FN,NAMES,DESC,GROUPS,BOOK,ICT,OF,MACRO,group,swings,macroPlus}
+return{FN,NAMES,DESC,GROUPS,BOOK,ICT,OF,MACRO,group,swings,macroPlus,brain,pdArrays,rejLog,REJ,PDR}
 })();
 
 /* ===== Wire the new strategy set into the app ===== */
@@ -2109,18 +2264,46 @@ return{FN,NAMES,DESC,GROUPS,BOOK,ICT,OF,MACRO,group,swings,macroPlus}
 const $=id=>document.getElementById(id),X=window.NBX,sel=$('strat');if(!sel||!X)return;
 const OB=ST.ob,CF=ST.conf,MS=(cs,b,lv)=>{const m=cfg.msnr;cfg.msnr=true;try{return signal(cs,b,lv)}finally{cfg.msnr=m}};
 [ST,SN,LIB].forEach(o=>Object.keys(o).forEach(k=>delete o[k]));
-const fns=Object.assign({},X.FN,{ict:X.group(X.ICT),of:X.group(X.OF),macro:X.macroPlus,ob:OB,conf:CF,msnr:MS});
+/* ===== MSNR Combined: every MSNR setup in one strategy =====
+   Parts: OB + fresh MSNR level (the old Confluence), A/V-level retest, RBS/SBR, Quasimodo, OCL, trendline, CE50.
+   Rules: parts on opposite sides cancel; the higher-timeframe bias must point the same way (neutral = stand aside);
+   it needs the OB + fresh level setup, or at least two parts agreeing. More parts agreeing = higher quality. */
+const MSNR_PARTS=['mav','rbs','qml','ocl','tl','ce50'],MSNR_ALL=['conf','msnr'].concat(MSNR_PARTS);
+const MSNRC=(cs,b,lv,a)=>{
+  const c=cs[cs.length-1],sy=window.SCS||cfg.symbol,cw=$('cfs');
+  if((!cw||cw.checked)&&clsOf(sy)==='commodities'){const hr=new Date(c.t*1000).getUTCHours();if(hr<13||hr>=17)return null}   // metals: 13:00-17:00 UTC only
+  const hits=[],one=(id,f)=>{let r=null;try{r=f(cs,b,lv,a)}catch(e){}if(r&&r.side&&!r.skip)hits.push([id,r])};
+  one('conf',CF);MSNR_PARTS.forEach(id=>one(id,X.FN[id]));
+  if(!hits.length)return null;
+  const B=hits.filter(h=>h[1].side==='BUY'),S=hits.filter(h=>h[1].side==='SELL');
+  if(B.length&&S.length)return null;
+  const H=B.length?B:S,side=H[0][1].side,dir=side==='BUY'?1:-1;
+  if(b!==dir)return null;
+  const core=H.find(h=>h[0]==='conf');
+  if(!core&&H.length<2)return null;
+  const best=H.reduce((m,h)=>h[1].q>m[1].q?h:m,H[0]),q=Math.min(40,best[1].q+(core?4:0)+4*(H.length-1));
+  const out=Object.assign({},best[1],{q,cf:H.map(h=>h[0]==='conf'?(h[1].cf||'OB + MSNR'):X.NAMES[h[0]]).join(' + ')});
+  if(core&&core[1].lvl!==undefined)out.lvl=core[1].lvl;
+  return out};
+X.NAMES.msnrc='MSNR Combined (all MSNR setups)';
+X.DESC.msnrc='All MSNR setups in one strategy: order block at a fresh level, A/V-level retest, RBS/SBR, Quasimodo, OCL, trendline and CE50. The higher-timeframe trend must agree. It needs the order block at a fresh level, or two MSNR setups on the same side; conflicting setups cancel. Targets are 2R, 3R and 4.5R only.';
+// pickers: the combined strategy first, the single MSNR setups folded below it
+{const G=X.GROUPS,take=l=>{const i=G.findIndex(g=>g.label===l);if(i>=0)G.splice(i,1)};take('MSNR Strategy');take('MSNR series (levels)');
+ take('PD arrays (hierarchy)');G.unshift({label:'PD arrays (hierarchy)',ids:['pdh','mit']});G.unshift({label:'MSNR single setups',ids:MSNR_ALL});G.unshift({label:'MSNR Strategy',ids:['msnrc']});
+ X.BOOK.splice(0,X.BOOK.length,['MSNR Strategy',['msnrc']],['MSNR single setups',MSNR_ALL],['PD arrays (hierarchy)',['pdh','mit']],['Candle Range Theory',['crt']],['ALLADINN macro',['macro']],['ICT',['ict'].concat(X.ICT)],['Orderflow (estimated)',['of'].concat(X.OF)],['Order block',['ob']])}
+const fns=Object.assign({},X.FN,{ict:X.group(X.ICT),of:X.group(X.OF),macro:X.macroPlus,ob:OB,conf:CF,msnr:MS,msnrc:MSNRC});
 Object.keys(fns).forEach(k=>{ST[k]=fns[k];SN[k]=X.DESC[k]});
 // Strategy lab: every single strategy is backtested (the two combined ones would only repeat their parts)
 Object.keys(X.FN).forEach(k=>{LIB[k]=[X.NAMES[k],X.DESC[k],cs=>{const r=X.FN[k](cs,0,null,atr(cs));return r?r.side:null}]});
 LIB.ob=[X.NAMES.ob,X.DESC.ob,cs=>{const r=OB(cs,bias(cs),msnr(cs),atr(cs));return r&&!r.skip&&r.side?r.side:null}];
 LIB.conf=[X.NAMES.conf,X.DESC.conf,cs=>{const r=CF(cs,bias(cs),msnr(cs),atr(cs));return r&&!r.skip&&r.side?r.side:null}];
 LIB.msnr=[X.NAMES.msnr,X.DESC.msnr,cs=>{const r=MS(cs,bias(cs),msnr(cs),atr(cs));return r&&!r.skip&&r.side?r.side:null}];
+LIB.msnrc=[X.NAMES.msnrc,X.DESC.msnrc,cs=>{const r=MSNRC(cs,bias(cs),msnr(cs),atr(cs));return r&&!r.skip&&r.side?r.side:null}];
 window.nbStName=k=>X.NAMES[k]||k;
 // strategy list: ICT concepts, Orderflow concepts, Order block
 const prev=sel.value;let want='';try{want=JSON.parse(localStorage.getItem('nb_set')||'{}').strat}catch(e){}
 sel.innerHTML=X.GROUPS.map(g=>'<optgroup label="'+g.label+'">'+g.ids.map(id=>'<option value="'+id+'">'+X.NAMES[id]+'</option>').join('')+'</optgroup>').join('');
-sel.value=ST[want]?want:ST[prev]?prev:'conf';
+sel.value=ST[want]?want:'msnrc';
 $('sdesc').textContent=SN[sel.value]||'';
 sel.addEventListener('change',()=>{$('sdesc').textContent=SN[sel.value]||''});
 sel.dispatchEvent(new Event('change',{bubbles:true}));
@@ -2146,13 +2329,16 @@ const mr=$('msnr');if(mr&&mr.closest('.chk'))mr.closest('.chk').style.display='n
 // lessons
 const LS=[
 ['1. Risk first','Risk 1-2% of your balance per trade. The stop-loss distance decides the position size, not your hopes. Use the calculator above.'],
-['2. Reading the plan','Entry is where you get in, stop is where the idea is wrong, TP1-TP3 are targets. R means multiples of your risk: 2R wins twice what you risk. At TP1 take some profit and move the stop to break-even.'],
+['2. Reading the plan','Entry is where you get in, stop is where the idea is wrong, TP1-TP3 are targets at 2R, 3R and 4.5R (nothing shorter). R means multiples of your risk: 2R wins twice what you risk. At TP1 take some profit and move the stop to break-even; the paper trade closes at TP2.'],
 ['ICT: Fair Value Gap (FVG)','Three candles where the first high and the third low do not overlap: price moved so fast it left an imbalance. Price often returns to refill part of it (the midpoint is called consequent encroachment) and then continues. The bot buys when price dips into a bullish gap and closes back above its midpoint.'],
 ['ICT: Liquidity Sweep','Stop orders pile up above obvious highs and below obvious lows (equal highs and equal lows are the clearest). A wick that runs through that level and closes back inside has taken the liquidity, and price often reverses.'],
 ['ICT: Market Structure Shift','In a downtrend price makes lower highs. When a strong displacement candle closes above the last lower high, the structure has shifted and the sellers are losing control. The best shifts come right after a sweep of the lows.'],
 ['ICT: Manipulation (Judas swing)','Smart money pushes price out of a quiet range to trigger breakout traders, then reverses. The bot trades the failure: a break of the range that closes back inside, against the break.'],
 ['ICT: Accumulation','Accumulation is a tight, low-volatility range where positions are built. Manipulation follows, then distribution is the real move. The bot enters when a strong candle leaves a squeezed range.'],
 ['ICT: Premium & Discount','Take the recent dealing range and split it at 50%. Above is premium (expensive, look to sell), below is discount (cheap, look to buy). The 62-79% retracement zone is the optimal trade entry.'],
+['MSNR Combined','One strategy that reads every MSNR setup together: the order block at a fresh level, A/V-level retests, RBS/SBR flips, Quasimodo, open-close levels, trendline touches and CE of wick 50%. It only fires when the higher-timeframe trend agrees and either the order block at a fresh level is present or two MSNR setups point the same way. If setups point opposite ways it stands aside. Every strategy in the app also skips a setup when a level or zone blocks the path before 2R.'],
+['The Brain','Every candidate signal is checked by the Brain before it is shown. It adds up 12 checks to a score out of 100: higher-timeframe trend, premium or discount, which PD array you are trading from, a fresh MSNR level, setup quality, the candle itself, room to the targets, volatility, session, EMA trend, a liquidity sweep, and how many other strategies agree. Hard vetoes reject a setup outright: against the trend, a stronger array against you, a level blocking the path before 2R, news, a dead or chaotic market, or several strategies pointing the other way. Only a score of 80 or more becomes a signal, and the Brain log in the Signals tab shows what it stopped and why.'],
+['PD array hierarchy','Not every zone is equal. From strongest to weakest: mitigation block, breaker block, liquidity void, fair value gap, order block, rejection block, old high or low. If an order block sits in the same area as a mitigation block, trust the mitigation block. A mitigation block forms when price fails to take the previous high or low and then breaks structure with a strong candle; price later returns to it and continues.'],
 ['Order block','An order block is the last opposite candle before a strong move. When price returns to it in the direction of the higher-timeframe bias, it often reacts again.'],
 ['Orderflow: Stacked Imbalance','Several price levels in a row where one side traded far more aggressively than the other. Three strong candles closing on their highs (or lows) with delta all one way show one-sided aggression.'],
 ['Orderflow: Absorption','A lot of effort (wide range, heavy trading) with no result (small body, long wick) at a swing extreme means the other side is absorbing it. A confirming candle in the opposite direction is the entry.'],
@@ -2194,7 +2380,7 @@ async function teLoad(){try{const f=d=>d.toISOString().slice(0,10),k=K||'guest:g
   const j=await r.json();if(!Array.isArray(j))throw 0;
   NT=j.filter(e=>e.Date&&+e.Importance>=3).map(e=>({t:Date.parse(e.Date+(/Z|[+-]\d\d:?\d\d$/.test(e.Date)?'':'Z'))/1000,cur:String(e.Currency&&e.Currency.length===3?e.Currency:CC[String(e.Country||'').toLowerCase()]||'').toUpperCase(),title:e.Event||e.Category||'event'})).filter(e=>e.t>0&&e.cur);NT.ok=1}
  catch(e){NT=[];NT.ok=0}newsAll();newsTick()}
-const m=$('nwm');if(m){const i=document.createElement('input');i.id='tek';i.autocomplete='off';i.placeholder='Trading Economics key (key:secret). Empty uses guest:guest, limited';i.value=K;
+const m=$('nwm');if(m){const i=document.createElement('input');i.id='tek';i.type='text';i.autocomplete='off';i.placeholder='Trading Economics key (key:secret). Empty uses guest:guest, limited';i.value=K;
   i.onchange=()=>{K=i.value.trim();try{localStorage.setItem('nb_tek',K)}catch(e){}teLoad()};m.before(i)}
 teLoad();setInterval(teLoad,1800000);
 })();
@@ -2242,6 +2428,9 @@ try{if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigat
 </script>
 <style>
 /* layout fixes + strategy book */
+.sp-br{margin-top:10px;display:grid;gap:5px;font-size:12px}.sp-br>b{font-size:13px}.sp-br>div{display:grid;grid-template-columns:1fr auto;gap:0 8px;align-items:baseline;border-top:1px solid rgba(255,255,255,.07);padding-top:4px}.sp-br small{grid-column:1/3;opacity:.6}.sp-br i{font-style:normal;font-weight:700;opacity:.8}.sp-br i.g{color:#34d399;opacity:1}.sp-br i.r{color:#f87171;opacity:1}
+.bn-log{font-size:12px}.bn-log h3{margin:0 0 4px;font-size:15px}.bn-log .mut{opacity:.65;margin:0 0 8px}.bn-i{border-top:1px solid rgba(255,255,255,.07);padding:7px 0}.bn-i b{font-size:13px}.bn-i span{display:block;opacity:.7;margin-top:2px}
+.sp-f{gap:8px}.sp-f>small{flex:1;min-width:0}.sp-f>span{display:flex;gap:10px;flex:none;white-space:nowrap}.sp-f button{margin-left:0;white-space:nowrap;padding:4px 2px}
 #nav{grid-template-columns:repeat(6,1fr)!important}#nav button{font-size:10.5px}
 #cv{height:clamp(220px,calc(100vh - 560px),46vh)!important}
 .bk{padding:16px!important;border-radius:26px!important}.bk b{text-shadow:none!important}
@@ -2278,6 +2467,16 @@ btn.onclick=()=>showTab('book');nav.insertBefore(btn,nav.lastElementChild);
 const m=document.getElementById('mpaper');if(m){const g=m.closest('.glass')||m.parentElement.parentElement;if(g)g.style.display='none'}
 document.querySelectorAll('.sec,summary,b').forEach(e=>{if(/^\s*(Trading mode|Broker)/i.test(e.textContent)&&e.children.length===0){e.style.display='none'}})}catch(x){}}
 clean();setTimeout(clean,300);setTimeout(clean,1500);document.addEventListener('click',()=>setTimeout(clean,50))})();
+</script>
+<script>
+/* Brain log: what was stopped, and why */
+(function(){const $=id=>document.getElementById(id),A=document.querySelector('.app'),X=window.NBX;if(!A||!X||!X.REJ)return;
+const card=document.createElement('div');card.className='glass bn-log';card.dataset.tab='sig';A.appendChild(card);
+const nm=sy=>(typeof symList!=='undefined'&&symList[sy]&&symList[sy].name)||sy,tf=g=>({60:'1m',300:'5m',900:'15m',1800:'30m',3600:'1h',14400:'4h',86400:'1D',604800:'1W'}[g]||g);
+function paint(){const R=X.REJ;card.innerHTML='<details><summary style="font-weight:700;font-size:15px;cursor:pointer">Brain log &middot; '+R.length+' setups stopped</summary><p class="mut">Every candidate signal is analysed first. These had a pattern but the Brain rejected them, and this is why.</p>'+
+ (R.length?R.slice(0,30).map(r=>'<div class="bn-i"><b>'+nm(r.sy)+' &middot; '+tf(r.tf)+' &middot; '+r.side+'</b> <small style="opacity:.6">'+new Date(r.ts).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+'</small><span>'+(X.NAMES[r.sk]||r.sk)+': '+r.why+'</span></div>').join(''):'<p class="mut">Nothing rejected yet.</p>')+'</details>'}
+const open=()=>{const d=card.querySelector('details');return d&&d.open};let last=-1;
+setInterval(()=>{if(!card.classList.contains('on'))return;const k=X.REJ.length+':'+(X.REJ[0]&&X.REJ[0].ts);if(k===last)return;last=k;const o=open();paint();if(o)card.querySelector('details').open=true},1500);paint()})();
 </script>
 </body>
 </html>
